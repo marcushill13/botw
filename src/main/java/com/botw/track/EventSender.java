@@ -77,6 +77,14 @@ public class EventSender
 	}
 
 	/**
+	 * Throws away anything queued for a challenge that no longer exists.
+	 */
+	public void forget(String challengeCode)
+	{
+		outbox.forget(challengeCode);
+	}
+
+	/**
 	 * Sends what is waiting. Safe to call at any time and safe to call twice — an event the service has
 	 * already seen is ignored by it, and only a confirmed send clears anything locally.
 	 */

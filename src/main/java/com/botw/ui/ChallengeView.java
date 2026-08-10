@@ -50,6 +50,26 @@ public class ChallengeView extends JPanel
 		Runnable onRefresh,
 		JPanel evidence)
 	{
+		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, evidence,
+			null, null);
+	}
+
+	/**
+	 * @param onEdit   offered only to the creator, and only when this client holds the token
+	 * @param onDelete same
+	 */
+	public ChallengeView(
+		Challenge challenge,
+		List<LeaderboardEntry> leaderboard,
+		String yourName,
+		boolean creator,
+		ItemManager itemManager,
+		Runnable onBack,
+		Runnable onRefresh,
+		JPanel evidence,
+		Runnable onEdit,
+		Runnable onDelete)
+	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
 
@@ -85,6 +105,12 @@ public class ChallengeView extends JPanel
 
 		body.add(Cards.gap(8));
 		body.add(codeRow(challenge, creator));
+
+		if (onEdit != null || onDelete != null)
+		{
+			body.add(Cards.gap(6));
+			body.add(creatorControls(challenge, onEdit, onDelete));
+		}
 
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Points"));
@@ -157,6 +183,55 @@ public class ChallengeView extends JPanel
 
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		return card;
+	}
+
+	/**
+	 * Editing and deleting, for whoever made it.
+	 * <p>
+	 * Deleting asks first and says what goes with it. A challenge takes the events and the screenshots
+	 * down with it, and that is not something to discover afterwards.
+	 */
+	private JPanel creatorControls(Challenge challenge, Runnable onEdit, Runnable onDelete)
+	{
+		JPanel row = new JPanel();
+		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
+		row.setBackground(Theme.BACKGROUND);
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+
+		if (onEdit != null)
+		{
+			JButton edit = Cards.button("Edit");
+			edit.addActionListener(event -> onEdit.run());
+			row.add(edit);
+			row.add(javax.swing.Box.createHorizontalStrut(4));
+		}
+
+		if (onDelete != null)
+		{
+			JButton delete = Cards.button("Delete");
+			delete.setToolTipText("Removes the challenge, its scores and its screenshots for everyone");
+			delete.addActionListener(event ->
+			{
+				int answer = javax.swing.JOptionPane.showConfirmDialog(
+					this,
+					"Delete \"" + challenge.getName() + "\"?" + System.lineSeparator()
+						+ System.lineSeparator()
+						+ "This removes it for everyone who joined, along with every score and every "
+						+ "screenshot. It cannot be undone.",
+					"Boss of the Week",
+					javax.swing.JOptionPane.YES_NO_OPTION);
+
+				if (answer == javax.swing.JOptionPane.YES_OPTION)
+				{
+					onDelete.run();
+				}
+			});
+
+			row.add(delete);
+		}
+
+		return row;
 	}
 
 	private JPanel pointsList(Challenge challenge)

@@ -72,6 +72,11 @@ async function route(request, env)
 		return withCors(await updateChallenge(byCode[1].toUpperCase(), request, env));
 	}
 
+	if (byCode && request.method === 'DELETE')
+	{
+		return withCors(await deleteChallenge(byCode[1].toUpperCase(), request, env));
+	}
+
 	const join = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/join$/);
 	if (join && request.method === 'POST')
 	{
@@ -212,6 +217,36 @@ async function updateChallenge(code, request, env)
 		challenge: publicChallenge(updated),
 		leaderboard: await leaderboardFor(code, env)
 	});
+}
+
+/**
+ * Removes a challenge and everything under it.
+ *
+ * The rows are deleted explicitly rather than left to the foreign keys, because D1 does not enforce
+ * them by default and a challenge that disappears while its events and screenshots linger would leave
+ * the database quietly filling up with things nothing can reach.
+ */
+async function deleteChallenge(code, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can delete this challenge' }, 403);
+	}
+
+	await env.DB.batch([
+		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM events WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM challenges WHERE code = ?').bind(code)
+	]);
+
+	return json({ deleted: true });
 }
 
 async function joinChallenge(code, request, env)

@@ -144,6 +144,14 @@ public class BotwApi
 			.header("X-Creator-Token", creatorToken));
 	}
 
+	public Result<Snapshot> delete(String baseUrl, String code, String creatorToken)
+	{
+		return send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code))
+			.delete()
+			.header("X-Creator-Token", creatorToken));
+	}
+
 	/**
 	 * Reports what happened. The events keep their ids, so a batch that is sent twice counts once.
 	 */

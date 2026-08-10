@@ -75,8 +75,23 @@ public class CreatePanel extends JPanel
 	private final Consumer<Challenge> onCreate;
 	private final Runnable onCancel;
 
+	/** Set when changing an existing challenge rather than making one. */
+	private Challenge editing;
+
 	public CreatePanel(
 		BossDrops bossDrops, ItemManager itemManager, Consumer<Challenge> onCreate, Runnable onCancel)
+	{
+		this(bossDrops, itemManager, onCreate, onCancel, null);
+	}
+
+	/**
+	 * @param editing an existing challenge to change, or null to make a new one. The same form either
+	 *                way — the fields are identical, and a second panel would be one more thing to keep
+	 *                in step with this one.
+	 */
+	public CreatePanel(
+		BossDrops bossDrops, ItemManager itemManager, Consumer<Challenge> onCreate, Runnable onCancel,
+		Challenge editing)
 	{
 		this.bossDrops = bossDrops;
 		this.itemManager = itemManager;
@@ -91,7 +106,7 @@ public class CreatePanel extends JPanel
 		form.setBackground(Theme.BACKGROUND);
 		form.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
-		JLabel heading = new JLabel("NEW CHALLENGE");
+		JLabel heading = new JLabel(editing == null ? "NEW CHALLENGE" : "EDIT CHALLENGE");
 		heading.setFont(Theme.figure(18f));
 		heading.setForeground(Theme.GOLD);
 		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -154,8 +169,63 @@ public class CreatePanel extends JPanel
 		});
 
 		refillBossPicker();
+
+		if (editing == null)
+		{
+			showChosenBoss();
+			prefillTimes();
+		}
+		else
+		{
+			this.editing = editing;
+			fillFrom(editing);
+		}
+	}
+
+	/**
+	 * Puts an existing challenge back into the form.
+	 * <p>
+	 * The drop list is taken from the challenge rather than from the boss, because the creator has
+	 * already made their choices about it and refilling from the boss would throw away every removal
+	 * and every points value they had set.
+	 */
+	private void fillFrom(Challenge challenge)
+	{
+		name.setText(challenge.getName());
+		timezone.setSelectedItem(challenge.getTimezone());
+		startsAt.setText(written(challenge.getStartsAt(), challenge.getTimezone()));
+		endsAt.setText(written(challenge.getEndsAt(), challenge.getTimezone()));
+		kcPer.setValue(Math.max(1, challenge.getKcPer()));
+		kcPoints.setValue(Math.max(0, challenge.getKcPoints()));
+
+		bossSearch.setText(challenge.getBoss());
+		refillBossPicker();
+
+		// Selecting the boss would refill the drops from the wiki list and undo the creator's edits, so
+		// the stored list is put back afterwards.
+		drops.clear();
+		for (DropRule rule : challenge.getDrops())
+		{
+			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints()));
+		}
+
 		showChosenBoss();
-		prefillTimes();
+		rebuildDropList();
+	}
+
+	private static String written(long epochMillis, String timezone)
+	{
+		try
+		{
+			return java.time.Instant.ofEpochMilli(epochMillis)
+				.atZone(ZoneId.of(timezone))
+				.toLocalDateTime()
+				.format(ENTERED);
+		}
+		catch (RuntimeException e)
+		{
+			return LocalDateTime.now().format(ENTERED);
+		}
 	}
 
 	/** "Every [10] kills is worth [1] points", laid out as a row rather than two labelled fields. */
@@ -187,7 +257,7 @@ public class CreatePanel extends JPanel
 		JButton cancel = Cards.button("Cancel");
 		cancel.addActionListener(event -> onCancel.run());
 
-		JButton create = Cards.button("Create challenge");
+		JButton create = Cards.button(editing == null ? "Create challenge" : "Save changes");
 		create.addActionListener(event -> submit());
 
 		row.add(cancel);
@@ -464,6 +534,12 @@ public class CreatePanel extends JPanel
 		challenge.setKcPer((Integer) kcPer.getValue());
 		challenge.setKcPoints((Integer) kcPoints.getValue());
 		challenge.setDrops(new ArrayList<>(drops.values()));
+
+		// Carried through so the caller knows which challenge it is saving.
+		if (editing != null)
+		{
+			challenge.setCode(editing.getCode());
+		}
 
 		onCreate.accept(challenge);
 	}

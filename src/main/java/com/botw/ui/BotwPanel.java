@@ -298,6 +298,75 @@ public class BotwPanel extends PluginPanel
 		show(new CreatePanel(bossDrops, itemManager, this::create, this::showList));
 	}
 
+	private void showEdit(Challenge challenge)
+	{
+		show(new CreatePanel(bossDrops, itemManager, this::saveEdit,
+			() -> openChallenge(challenge.getCode()), challenge));
+	}
+
+	private void saveEdit(Challenge challenge)
+	{
+		String token = challenges.creatorTokenFor(challenge.getCode());
+		if (token == null)
+		{
+			Cards.warn(this, "Only the creator can change this challenge.");
+			return;
+		}
+
+		busy("Saving…");
+		executor.execute(() ->
+		{
+			BotwApi.Result<BotwApi.Snapshot> result =
+				api.update(config.serverUrl(), challenge, token);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					Cards.warn(this, result.getError());
+				}
+				else
+				{
+					challenges.put(result.getValue().getChallenge(), null, null);
+				}
+
+				openChallenge(challenge.getCode());
+			});
+		});
+	}
+
+	private void delete(String code)
+	{
+		String token = challenges.creatorTokenFor(code);
+		if (token == null)
+		{
+			Cards.warn(this, "Only the creator can delete this challenge.");
+			return;
+		}
+
+		busy("Deleting…");
+		executor.execute(() ->
+		{
+			BotwApi.Result<BotwApi.Snapshot> result = api.delete(config.serverUrl(), code, token);
+
+			SwingUtilities.invokeLater(() ->
+			{
+				if (!result.ok())
+				{
+					showList();
+					Cards.warn(this, result.getError());
+					return;
+				}
+
+				// Locally too, along with anything still waiting to be sent for it — there is nothing
+				// left to send it to.
+				challenges.remove(code);
+				sender.forget(code);
+				showList();
+			});
+		});
+	}
+
 	private void create(Challenge challenge)
 	{
 		String rsn = playerName.get();
@@ -408,15 +477,19 @@ public class BotwPanel extends PluginPanel
 					: new EvidencePanel(code, snapshot.getChallenge().getName(), creatorToken,
 						config.serverUrl(), api, executor, snapshot.getLeaderboard());
 
+				Challenge open = snapshot.getChallenge();
+
 				show(new ChallengeView(
-					snapshot.getChallenge(),
+					open,
 					snapshot.getLeaderboard(),
 					playerName.get(),
 					membership != null && membership.isCreator(),
 					itemManager,
 					this::showList,
 					() -> openChallenge(code),
-					evidence));
+					evidence,
+					creatorToken == null ? null : () -> showEdit(open),
+					creatorToken == null ? null : () -> delete(code)));
 			});
 		});
 	}

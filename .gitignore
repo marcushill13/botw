@@ -6,3 +6,5 @@ out/
 .idea/
 *.iml
 .vscode/
+node_modules/
+.wrangler/

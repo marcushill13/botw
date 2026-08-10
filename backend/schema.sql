@@ -1,0 +1,69 @@
+-- Boss of the Week storage.
+--
+-- Events are kept individually rather than as a running total per player. It costs a little more
+-- space and buys three things: the "where did my points come from" breakdown the panel shows, an
+-- idempotent resubmit (the plugin can send the same kill twice after a disconnect without it
+-- counting twice), and the ability to recompute every score if a challenge's points are edited
+-- mid-week — which will happen, because someone always sets a number wrong.
+
+CREATE TABLE IF NOT EXISTS challenges (
+	code           TEXT PRIMARY KEY,
+	name           TEXT NOT NULL,
+	boss           TEXT NOT NULL,
+
+	-- Epoch milliseconds. The timezone is stored alongside only so the panel can show the creator
+	-- the wall-clock time they chose; every comparison is done in UTC.
+	starts_at      INTEGER NOT NULL,
+	ends_at        INTEGER NOT NULL,
+	timezone       TEXT NOT NULL,
+
+	-- How many kills earn kc_points. Both sides are the creator's choice.
+	kc_per         INTEGER NOT NULL,
+	kc_points      INTEGER NOT NULL,
+
+	-- The drop list, as JSON: [{ "name": "Vorki", "itemId": 21992, "points": 20 }]
+	drops          TEXT NOT NULL,
+
+	-- Proves whoever is editing is the person who made it. Never sent to participants.
+	creator_token  TEXT NOT NULL,
+	creator_rsn    TEXT NOT NULL,
+
+	created_at     INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS participants (
+	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
+	rsn            TEXT NOT NULL,
+	token          TEXT NOT NULL,
+	joined_at      INTEGER NOT NULL,
+
+	PRIMARY KEY (challenge_code, rsn)
+);
+
+CREATE TABLE IF NOT EXISTS events (
+	-- Made by the plugin, so a resend after a disconnect lands on the same row rather than a second
+	-- one. This is the whole idempotency story.
+	id             TEXT PRIMARY KEY,
+
+	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
+	rsn            TEXT NOT NULL,
+
+	-- 'kc' or 'drop'.
+	kind           TEXT NOT NULL,
+
+	-- Null for a kill count event.
+	item_name      TEXT,
+
+	-- Kills for a 'kc' event, quantity for a 'drop'.
+	amount         INTEGER NOT NULL,
+
+	-- Worked out here from the challenge's own configuration, never taken from the client. The plugin
+	-- reports what happened; what it is worth is not its decision.
+	points         INTEGER NOT NULL,
+
+	occurred_at    INTEGER NOT NULL,
+	recorded_at    INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS events_by_challenge ON events (challenge_code, rsn);
+CREATE INDEX IF NOT EXISTS challenges_by_creator ON challenges (creator_rsn);

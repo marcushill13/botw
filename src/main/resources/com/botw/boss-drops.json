@@ -2,7 +2,7 @@
 	"dataVersion": 1,
 	"source": "https://oldschool.runescape.wiki",
 	"attribution": "Drop data from the OSRS Wiki, CC BY-NC-SA 3.0",
-	"generatedAt": "2026-08-10T06:53:16.414Z",
+	"generatedAt": "2026-08-10T08:41:42.515Z",
 	"bosses": [
 		{
 			"name": "Abyssal Sire",
@@ -22,47 +22,56 @@
 				{
 					"name": "Hydra tail",
 					"rarity": "1/{{#expr:512/(1999/2000*1999/2000*999/1000) round 1}}",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 22988
 				},
 				{
 					"name": "Hydra leather",
 					"rarity": "1/{{#expr:512/(1999/2000*1999/2000*999/1000*511/512) round 1}}",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 22983
 				},
 				{
 					"name": "Hydra's claw",
 					"rarity": "1/{{#expr:1000/(1999/2000*1999/2000) round 1}}",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 22966
 				},
 				{
 					"name": "Dragon thrownaxe",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 20849
 				},
 				{
 					"name": "Dragon knife",
 					"rarity": "1/{{#expr:2000/(1999/2000) round 1}}",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 22804
 				},
 				{
 					"name": "Coins",
 					"rarity": "0.5/101",
-					"oneIn": 202
+					"oneIn": 202,
+					"itemId": 617
 				},
 				{
 					"name": "Alchemical hydra heads",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 23077
 				},
 				{
 					"name": "Jar of chemicals",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 23064
 				},
 				{
 					"name": "Ikkle hydra",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 22746
 				}
 			]
 		},
@@ -70,9 +79,28 @@
 			"name": "Amoxliatl",
 			"uniques": [
 				{
+					"name": "Pendant of ates (inert)",
+					"rarity": "1/25",
+					"oneIn": 25,
+					"itemId": 29892
+				},
+				{
+					"name": "Glacial temotli",
+					"rarity": "1/100",
+					"oneIn": 100,
+					"itemId": 29889
+				},
+				{
+					"name": "Tooth half of key (moon key)",
+					"rarity": "1/125",
+					"oneIn": 125,
+					"itemId": -1
+				},
+				{
 					"name": "Moxi",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 30154
 				}
 			]
 		},
@@ -82,37 +110,50 @@
 				{
 					"name": "Noxious pommel",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 29794
 				},
 				{
 					"name": "Noxious point",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 29790
 				},
 				{
 					"name": "Noxious blade",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 29792
 				},
 				{
 					"name": "Araxyte fang",
 					"rarity": "1/600",
-					"oneIn": 600
+					"oneIn": 600,
+					"itemId": 29799
 				},
 				{
 					"name": "Araxyte head",
 					"rarity": "1/250",
-					"oneIn": 250
+					"oneIn": 250,
+					"itemId": 29788
 				},
 				{
 					"name": "Jar of venom",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 29786
+				},
+				{
+					"name": "Coagulated venom",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 29781
 				},
 				{
 					"name": "Nid",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 29836
 				}
 			]
 		},
@@ -122,22 +163,26 @@
 				{
 					"name": "Claws of callisto",
 					"rarity": "1/618",
-					"oneIn": 618
+					"oneIn": 618,
+					"itemId": 27667
 				},
 				{
 					"name": "Tyrannical ring",
 					"rarity": "1/716",
-					"oneIn": 716
+					"oneIn": 716,
+					"itemId": 12603
 				},
 				{
 					"name": "Voidwaker hilt",
 					"rarity": "1/912",
-					"oneIn": 912
+					"oneIn": 912,
+					"itemId": 27681
 				},
 				{
 					"name": "Callisto cub",
 					"rarity": "1/2800",
-					"oneIn": 2800
+					"oneIn": 2800,
+					"itemId": 13178
 				}
 			]
 		},
@@ -149,9 +194,22 @@
 			"name": "Bryophyta",
 			"uniques": [
 				{
+					"name": "Moss giant bone",
+					"rarity": "1/4",
+					"oneIn": 4,
+					"itemId": 7869
+				},
+				{
+					"name": "Mossy key",
+					"rarity": "1/16",
+					"oneIn": 16,
+					"itemId": 22374
+				},
+				{
 					"name": "Giant champion scroll",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 6800
 				}
 			]
 		},
@@ -159,19 +217,28 @@
 			"name": "Callisto",
 			"uniques": [
 				{
+					"name": "Claws of callisto",
+					"rarity": "1/196",
+					"oneIn": 196,
+					"itemId": 27667
+				},
+				{
 					"name": "Voidwaker hilt",
 					"rarity": "1/360",
-					"oneIn": 360
+					"oneIn": 360,
+					"itemId": 27681
 				},
 				{
 					"name": "Tyrannical ring",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 12603
 				},
 				{
 					"name": "Callisto cub",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 13178
 				}
 			]
 		},
@@ -181,27 +248,32 @@
 				{
 					"name": "Skull of vet'ion",
 					"rarity": "1/618",
-					"oneIn": 618
+					"oneIn": 618,
+					"itemId": 27673
 				},
 				{
 					"name": "Ring of the gods",
 					"rarity": "1/716",
-					"oneIn": 716
+					"oneIn": 716,
+					"itemId": 12601
 				},
 				{
 					"name": "Voidwaker blade",
 					"rarity": "1/912",
-					"oneIn": 912
+					"oneIn": 912,
+					"itemId": 27684
 				},
 				{
 					"name": "Skeleton champion scroll",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 6806
 				},
 				{
 					"name": "Vet'ion jr.",
 					"rarity": "1/2800",
-					"oneIn": 2800
+					"oneIn": 2800,
+					"itemId": 13179
 				}
 			]
 		},
@@ -211,32 +283,38 @@
 				{
 					"name": "Primordial crystal",
 					"rarity": "1/520",
-					"oneIn": 520
+					"oneIn": 520,
+					"itemId": 13231
 				},
 				{
 					"name": "Pegasian crystal",
 					"rarity": "1/520",
-					"oneIn": 520
+					"oneIn": 520,
+					"itemId": 13229
 				},
 				{
 					"name": "Eternal crystal",
 					"rarity": "1/520",
-					"oneIn": 520
+					"oneIn": 520,
+					"itemId": 13227
 				},
 				{
 					"name": "Smouldering stone",
 					"rarity": "1/520",
-					"oneIn": 520
+					"oneIn": 520,
+					"itemId": 13233
 				},
 				{
 					"name": "Jar of souls",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 13245
 				},
 				{
 					"name": "Hellpuppy",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 13247
 				}
 			]
 		},
@@ -244,9 +322,16 @@
 			"name": "Chaos Elemental",
 			"uniques": [
 				{
+					"name": "Weapon poison(++)",
+					"rarity": "10/128",
+					"oneIn": 13,
+					"itemId": 5940
+				},
+				{
 					"name": "Pet chaos elemental",
 					"rarity": "1/300",
-					"oneIn": 300
+					"oneIn": 300,
+					"itemId": 11995
 				}
 			]
 		},
@@ -256,17 +341,20 @@
 				{
 					"name": "Odium shard 1",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11928
 				},
 				{
 					"name": "Malediction shard 1",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11931
 				},
 				{
 					"name": "Pet chaos elemental",
 					"rarity": "1/1000",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 11995
 				}
 			]
 		},
@@ -274,39 +362,52 @@
 			"name": "Commander Zilyana",
 			"uniques": [
 				{
+					"name": "Saradomin sword",
+					"rarity": "1/127",
+					"oneIn": 127,
+					"itemId": 11838
+				},
+				{
 					"name": "Saradomin's light",
 					"rarity": "1/254",
-					"oneIn": 254
+					"oneIn": 254,
+					"itemId": 13256
 				},
 				{
 					"name": "Armadyl crossbow",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11785
 				},
 				{
 					"name": "Saradomin hilt",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11814
 				},
 				{
 					"name": "Godsword shard 1",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11818
 				},
 				{
 					"name": "Godsword shard 2",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11820
 				},
 				{
 					"name": "Godsword shard 3",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11822
 				},
 				{
 					"name": "Pet zilyana",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12651
 				}
 			]
 		},
@@ -316,12 +417,14 @@
 				{
 					"name": "Jar of spirits",
 					"rarity": "1/1000",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 25521
 				},
 				{
 					"name": "Pet dark core",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12816
 				}
 			]
 		},
@@ -335,12 +438,20 @@
 				{
 					"name": "Odium shard 2",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11929
 				},
 				{
 					"name": "Malediction shard 2",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11932
+				},
+				{
+					"name": "Fedora",
+					"rarity": "1/128",
+					"oneIn": 128,
+					"itemId": 11990
 				}
 			]
 		},
@@ -352,9 +463,16 @@
 			"name": "Dagannoth Prime",
 			"uniques": [
 				{
+					"name": "Dagannoth ribs",
+					"rarity": "1/4",
+					"oneIn": 4,
+					"itemId": 7857
+				},
+				{
 					"name": "Pet dagannoth prime",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12644
 				}
 			]
 		},
@@ -362,9 +480,16 @@
 			"name": "Dagannoth Rex",
 			"uniques": [
 				{
+					"name": "Dagannoth ribs",
+					"rarity": "1/4",
+					"oneIn": 4,
+					"itemId": 7857
+				},
+				{
 					"name": "Pet dagannoth rex",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12645
 				}
 			]
 		},
@@ -372,9 +497,16 @@
 			"name": "Dagannoth Supreme",
 			"uniques": [
 				{
+					"name": "Dagannoth ribs",
+					"rarity": "1/4",
+					"oneIn": 4,
+					"itemId": 7857
+				},
+				{
 					"name": "Pet dagannoth supreme",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12643
 				}
 			]
 		},
@@ -388,38 +520,51 @@
 				{
 					"name": "Zenyte shard",
 					"rarity": "1/300",
-					"oneIn": 300
+					"oneIn": 300,
+					"itemId": 19529
 				},
 				{
 					"name": "Ballista limbs",
 					"rarity": "1/500",
-					"oneIn": 500
+					"oneIn": 500,
+					"itemId": 19592
 				},
 				{
 					"name": "Ballista spring",
 					"rarity": "1/500",
-					"oneIn": 500
+					"oneIn": 500,
+					"itemId": 19601
 				},
 				{
 					"name": "Light frame",
 					"rarity": "1/750",
-					"oneIn": 750
+					"oneIn": 750,
+					"itemId": 19586
 				},
 				{
 					"name": "Heavy frame",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 19589
 				},
 				{
 					"name": "Monkey tail",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 19610
 				}
 			]
 		},
 		{
 			"name": "Deranged archaeologist",
-			"uniques": []
+			"uniques": [
+				{
+					"name": "Steel ring",
+					"rarity": "3/131",
+					"oneIn": 44,
+					"itemId": -1
+				}
+			]
 		},
 		{
 			"name": "Duke Sucellus",
@@ -427,42 +572,74 @@
 				{
 					"name": "Magus vestige",
 					"rarity": "1/720",
-					"oneIn": 720
+					"oneIn": 720,
+					"itemId": 28281
 				},
 				{
 					"name": "Chromium ingot",
 					"rarity": "3/720",
-					"oneIn": 240
+					"oneIn": 240,
+					"itemId": 28276
 				},
 				{
 					"name": "Eye of the duke",
 					"rarity": "1/720",
-					"oneIn": 720
+					"oneIn": 720,
+					"itemId": 28321
 				},
 				{
 					"name": "Virtus mask",
 					"rarity": "1/2160",
-					"oneIn": 2160
+					"oneIn": 2160,
+					"itemId": 26241
 				},
 				{
 					"name": "Virtus robe top",
 					"rarity": "1/2160",
-					"oneIn": 2160
+					"oneIn": 2160,
+					"itemId": 26243
 				},
 				{
 					"name": "Virtus robe bottom",
 					"rarity": "1/2160",
-					"oneIn": 2160
+					"oneIn": 2160,
+					"itemId": 26245
+				},
+				{
+					"name": "Frozen tablet",
+					"rarity": "1/25.8",
+					"oneIn": 26,
+					"itemId": 28333
+				},
+				{
+					"name": "Awakener's orb",
+					"rarity": "1/48.5",
+					"oneIn": 49,
+					"itemId": 28334
 				},
 				{
 					"name": "Ice quartz",
 					"rarity": "1/206.6",
-					"oneIn": 207
+					"oneIn": 207,
+					"itemId": 28270
+				},
+				{
+					"name": "Odd key",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 28430
 				},
 				{
 					"name": "Baron",
 					"rarity": "1/2500",
-					"oneIn": 2500
+					"oneIn": 2500,
+					"itemId": 28250
+				},
+				{
+					"name": "Ancient blood ornament kit",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 28336
 				}
 			]
 		},
@@ -480,42 +657,50 @@
 				{
 					"name": "Bandos chestplate",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11832
 				},
 				{
 					"name": "Bandos tassets",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11834
 				},
 				{
 					"name": "Bandos boots",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11836
 				},
 				{
 					"name": "Bandos hilt",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11812
 				},
 				{
 					"name": "Godsword shard 1",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11818
 				},
 				{
 					"name": "Godsword shard 2",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11820
 				},
 				{
 					"name": "Godsword shard 3",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11822
 				},
 				{
 					"name": "Pet general graardor",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12650
 				}
 			]
 		},
@@ -523,9 +708,16 @@
 			"name": "Giant Mole",
 			"uniques": [
 				{
+					"name": "Immaculate mole skin",
+					"rarity": "1/50",
+					"oneIn": 50,
+					"itemId": -1
+				},
+				{
 					"name": "Baby mole",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12646
 				}
 			]
 		},
@@ -539,7 +731,8 @@
 				{
 					"name": "Tangleroot",
 					"rarity": "1/5375",
-					"oneIn": 5375
+					"oneIn": 5375,
+					"itemId": 20661
 				}
 			]
 		},
@@ -551,34 +744,52 @@
 			"name": "K'ril Tsutsaroth",
 			"uniques": [
 				{
+					"name": "Steam battlestaff",
+					"rarity": "1/127",
+					"oneIn": 127,
+					"itemId": 11787
+				},
+				{
+					"name": "Zamorakian spear",
+					"rarity": "1/127",
+					"oneIn": 127,
+					"itemId": 11824
+				},
+				{
 					"name": "Staff of the dead",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11791
 				},
 				{
 					"name": "Zamorak hilt",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11816
 				},
 				{
 					"name": "Godsword shard 1",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11818
 				},
 				{
 					"name": "Godsword shard 2",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11820
 				},
 				{
 					"name": "Godsword shard 3",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11822
 				},
 				{
 					"name": "Pet k'ril tsutsaroth",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12652
 				}
 			]
 		},
@@ -586,14 +797,34 @@
 			"name": "Kalphite Queen",
 			"uniques": [
 				{
+					"name": "Kq head (tattered)",
+					"rarity": "Once",
+					"oneIn": 0,
+					"itemId": 22671
+				},
+				{
+					"name": "Kq head",
+					"rarity": "1/128",
+					"oneIn": 128,
+					"itemId": 7981
+				},
+				{
+					"name": "Dragon chainbody",
+					"rarity": "1/128",
+					"oneIn": 128,
+					"itemId": 2513
+				},
+				{
 					"name": "Jar of sand",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 12885
 				},
 				{
 					"name": "Kalphite princess",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12647
 				}
 			]
 		},
@@ -605,14 +836,28 @@
 			"name": "King Black Dragon",
 			"uniques": [
 				{
+					"name": "Key (elite)",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 19812
+				},
+				{
+					"name": "Kbd heads",
+					"rarity": "1/128",
+					"oneIn": 128,
+					"itemId": 7980
+				},
+				{
 					"name": "Prince black dragon",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12653
 				},
 				{
 					"name": "Draconic visage",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 11286
 				}
 			]
 		},
@@ -622,22 +867,26 @@
 				{
 					"name": "Trident of the seas (full)",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 11905
 				},
 				{
 					"name": "Kraken tentacle",
 					"rarity": "1/400",
-					"oneIn": 400
+					"oneIn": 400,
+					"itemId": 12004
 				},
 				{
 					"name": "Jar of dirt",
 					"rarity": "1/1000",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 12007
 				},
 				{
 					"name": "Pet kraken",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12655
 				}
 			]
 		},
@@ -647,42 +896,50 @@
 				{
 					"name": "Armadyl helmet",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11826
 				},
 				{
 					"name": "Armadyl chestplate",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11828
 				},
 				{
 					"name": "Armadyl chainskirt",
 					"rarity": "1/381",
-					"oneIn": 381
+					"oneIn": 381,
+					"itemId": 11830
 				},
 				{
 					"name": "Armadyl hilt",
 					"rarity": "1/508",
-					"oneIn": 508
+					"oneIn": 508,
+					"itemId": 11810
 				},
 				{
 					"name": "Godsword shard 1",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11818
 				},
 				{
 					"name": "Godsword shard 2",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11820
 				},
 				{
 					"name": "Godsword shard 3",
 					"rarity": "1/762",
-					"oneIn": 762
+					"oneIn": 762,
+					"itemId": 11822
 				},
 				{
 					"name": "Pet kree'arra",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 12649
 				}
 			]
 		},
@@ -692,7 +949,8 @@
 				{
 					"name": "Xeric's talisman (inert)",
 					"rarity": "2/500",
-					"oneIn": 250
+					"oneIn": 250,
+					"itemId": 13392
 				}
 			]
 		},
@@ -706,37 +964,50 @@
 				{
 					"name": "Ancient hilt",
 					"rarity": "1/516",
-					"oneIn": 516
+					"oneIn": 516,
+					"itemId": 26370
 				},
 				{
 					"name": "Nihil horn",
 					"rarity": "1/258",
-					"oneIn": 258
+					"oneIn": 258,
+					"itemId": 26372
 				},
 				{
 					"name": "Torva full helm (damaged)",
 					"rarity": "1/258",
-					"oneIn": 258
+					"oneIn": 258,
+					"itemId": 26376
 				},
 				{
 					"name": "Torva platebody (damaged)",
 					"rarity": "1/258",
-					"oneIn": 258
+					"oneIn": 258,
+					"itemId": 26378
 				},
 				{
 					"name": "Torva platelegs (damaged)",
 					"rarity": "1/258",
-					"oneIn": 258
+					"oneIn": 258,
+					"itemId": 26380
+				},
+				{
+					"name": "Zaryte vambraces",
+					"rarity": "1/172",
+					"oneIn": 172,
+					"itemId": 26235
 				},
 				{
 					"name": "Rune sword",
 					"rarity": "1/209",
-					"oneIn": 209
+					"oneIn": 209,
+					"itemId": 1289
 				},
 				{
 					"name": "Nexling",
 					"rarity": "1/500",
-					"oneIn": 500
+					"oneIn": 500,
+					"itemId": 26348
 				}
 			]
 		},
@@ -750,7 +1021,8 @@
 				{
 					"name": "Giant champion scroll",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 6800
 				}
 			]
 		},
@@ -762,19 +1034,52 @@
 			"name": "Phantom Muspah",
 			"uniques": [
 				{
+					"name": "Ancient essence",
+					"rarity": "60/100",
+					"oneIn": 2,
+					"itemId": 27616
+				},
+				{
+					"name": "Frozen cache",
+					"rarity": "4/100",
+					"oneIn": 25,
+					"itemId": 27622
+				},
+				{
+					"name": "Ancient icon",
+					"rarity": "2/100",
+					"oneIn": 50,
+					"itemId": 27627
+				},
+				{
+					"name": "Venator shard",
+					"rarity": "1/100",
+					"oneIn": 100,
+					"itemId": 27614
+				},
+				{
 					"name": "Rune sword",
 					"rarity": "1/235",
-					"oneIn": 235
+					"oneIn": 235,
+					"itemId": 1289
 				},
 				{
 					"name": "Grimy lantadyme",
 					"rarity": "3/752",
-					"oneIn": 251
+					"oneIn": 251,
+					"itemId": 2485
+				},
+				{
+					"name": "Charged ice",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 27643
 				},
 				{
 					"name": "Muphin",
 					"rarity": "1/2500",
-					"oneIn": 2500
+					"oneIn": 2500,
+					"itemId": 27590
 				}
 			]
 		},
@@ -784,57 +1089,74 @@
 				{
 					"name": "Nightmare staff",
 					"rarity": "69/35000",
-					"oneIn": 507
+					"oneIn": 507,
+					"itemId": 24422
 				},
 				{
 					"name": "Inquisitor's great helm",
 					"rarity": "1/700",
-					"oneIn": 700
+					"oneIn": 700,
+					"itemId": 24419
 				},
 				{
 					"name": "Inquisitor's hauberk",
 					"rarity": "1/700",
-					"oneIn": 700
+					"oneIn": 700,
+					"itemId": 24420
 				},
 				{
 					"name": "Inquisitor's plateskirt",
 					"rarity": "1/700",
-					"oneIn": 700
+					"oneIn": 700,
+					"itemId": 24421
 				},
 				{
 					"name": "Inquisitor's mace",
 					"rarity": "31/35000",
-					"oneIn": 1129
+					"oneIn": 1129,
+					"itemId": 24417
 				},
 				{
 					"name": "Eldritch orb",
 					"rarity": "1/1600",
-					"oneIn": 1600
+					"oneIn": 1600,
+					"itemId": 24517
 				},
 				{
 					"name": "Harmonised orb",
 					"rarity": "1/1600",
-					"oneIn": 1600
+					"oneIn": 1600,
+					"itemId": 24511
 				},
 				{
 					"name": "Volatile orb",
 					"rarity": "1/1600",
-					"oneIn": 1600
+					"oneIn": 1600,
+					"itemId": 24514
+				},
+				{
+					"name": "Slepey tablet",
+					"rarity": "1/25",
+					"oneIn": 25,
+					"itemId": 25837
 				},
 				{
 					"name": "Parasitic egg",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 25838
 				},
 				{
 					"name": "Little nightmare",
 					"rarity": "1/1400",
-					"oneIn": 1400
+					"oneIn": 1400,
+					"itemId": 24491
 				},
 				{
 					"name": "Jar of dreams",
 					"rarity": "1/4000",
-					"oneIn": 4000
+					"oneIn": 4000,
+					"itemId": 24495
 				}
 			]
 		},
@@ -844,17 +1166,56 @@
 				{
 					"name": "Sarachnis cudgel",
 					"rarity": "1/384",
-					"oneIn": 384
+					"oneIn": 384,
+					"itemId": 23528
+				},
+				{
+					"name": "Tattered moon page",
+					"rarity": "1/5",
+					"oneIn": 5,
+					"itemId": 23510
+				},
+				{
+					"name": "Tattered sun page",
+					"rarity": "1/5",
+					"oneIn": 5,
+					"itemId": 23512
+				},
+				{
+					"name": "Tattered temple page",
+					"rarity": "1/5",
+					"oneIn": 5,
+					"itemId": 23514
+				},
+				{
+					"name": "Giant egg sac(full)",
+					"rarity": "1/20",
+					"oneIn": 20,
+					"itemId": 23517
+				},
+				{
+					"name": "Grubby key",
+					"rarity": "1/15",
+					"oneIn": 15,
+					"itemId": 23499
+				},
+				{
+					"name": "Pristine spider silk",
+					"rarity": "1/50",
+					"oneIn": 50,
+					"itemId": -1
 				},
 				{
 					"name": "Jar of eyes",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 23525
 				},
 				{
 					"name": "Sraracha",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 23495
 				}
 			]
 		},
@@ -864,17 +1225,20 @@
 				{
 					"name": "Odium shard 3",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11930
 				},
 				{
 					"name": "Malediction shard 3",
 					"rarity": "1/256",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 11933
 				},
 				{
 					"name": "Scorpia's offspring",
 					"rarity": "1/2015.75",
-					"oneIn": 2016
+					"oneIn": 2016,
+					"itemId": 13181
 				}
 			]
 		},
@@ -882,9 +1246,16 @@
 			"name": "Scurrius",
 			"uniques": [
 				{
+					"name": "Scurrius' spine",
+					"rarity": "1/33",
+					"oneIn": 33,
+					"itemId": 28798
+				},
+				{
 					"name": "Scurry",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 28801
 				}
 			]
 		},
@@ -898,12 +1269,50 @@
 				{
 					"name": "Uncut onyx",
 					"rarity": "1/1000",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 6571
+				},
+				{
+					"name": "Dark claw",
+					"rarity": "1/25",
+					"oneIn": 25,
+					"itemId": 21275
+				},
+				{
+					"name": "Skotos",
+					"rarity": "1/65",
+					"oneIn": 65,
+					"itemId": 21273
+				},
+				{
+					"name": "Dark totem base",
+					"rarity": "3/128",
+					"oneIn": 43,
+					"itemId": 19679
+				},
+				{
+					"name": "Dark totem middle",
+					"rarity": "3/128",
+					"oneIn": 43,
+					"itemId": 19681
+				},
+				{
+					"name": "Dark totem top",
+					"rarity": "3/128",
+					"oneIn": 43,
+					"itemId": 19683
+				},
+				{
+					"name": "Dark totem",
+					"rarity": "1/128",
+					"oneIn": 128,
+					"itemId": 19685
 				},
 				{
 					"name": "Jar of darkness",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 19701
 				}
 			]
 		},
@@ -921,22 +1330,32 @@
 				{
 					"name": "Fangs of venenatis",
 					"rarity": "1/618",
-					"oneIn": 618
+					"oneIn": 618,
+					"itemId": 27670
 				},
 				{
 					"name": "Treasonous ring",
 					"rarity": "1/716",
-					"oneIn": 716
+					"oneIn": 716,
+					"itemId": 12605
 				},
 				{
 					"name": "Voidwaker gem",
 					"rarity": "1/912",
-					"oneIn": 912
+					"oneIn": 912,
+					"itemId": 27687
+				},
+				{
+					"name": "Strange fruit",
+					"rarity": "1/5",
+					"oneIn": 5,
+					"itemId": 464
 				},
 				{
 					"name": "Venenatis spiderling",
 					"rarity": "1/2800",
-					"oneIn": 2800
+					"oneIn": 2800,
+					"itemId": 13177
 				}
 			]
 		},
@@ -946,7 +1365,8 @@
 				{
 					"name": "Onyx",
 					"rarity": "1/450",
-					"oneIn": 450
+					"oneIn": 450,
+					"itemId": 6573
 				}
 			]
 		},
@@ -954,9 +1374,34 @@
 			"name": "The Hueycoatl",
 			"uniques": [
 				{
+					"name": "Dragon hunter wand",
+					"rarity": "1/105",
+					"oneIn": 105,
+					"itemId": 30070
+				},
+				{
+					"name": "Hueycoatl hide",
+					"rarity": "11/315",
+					"oneIn": 29,
+					"itemId": 30085
+				},
+				{
+					"name": "Tome of earth (empty)",
+					"rarity": "1/90",
+					"oneIn": 90,
+					"itemId": 30066
+				},
+				{
+					"name": "Tooth half of key (moon key)",
+					"rarity": "1/75",
+					"oneIn": 75,
+					"itemId": -1
+				},
+				{
 					"name": "Huberte",
 					"rarity": "1/400",
-					"oneIn": 400
+					"oneIn": 400,
+					"itemId": 30152
 				}
 			]
 		},
@@ -966,42 +1411,68 @@
 				{
 					"name": "Venator vestige",
 					"rarity": "1/768",
-					"oneIn": 768
+					"oneIn": 768,
+					"itemId": 28283
 				},
 				{
 					"name": "Chromium ingot",
 					"rarity": "3/768",
-					"oneIn": 256
+					"oneIn": 256,
+					"itemId": 28276
 				},
 				{
 					"name": "Leviathan's lure",
 					"rarity": "1/768",
-					"oneIn": 768
+					"oneIn": 768,
+					"itemId": 28325
 				},
 				{
 					"name": "Virtus mask",
 					"rarity": "1/2304",
-					"oneIn": 2304
+					"oneIn": 2304,
+					"itemId": 26241
 				},
 				{
 					"name": "Virtus robe top",
 					"rarity": "1/2304",
-					"oneIn": 2304
+					"oneIn": 2304,
+					"itemId": 26243
 				},
 				{
 					"name": "Virtus robe bottom",
 					"rarity": "1/2304",
-					"oneIn": 2304
+					"oneIn": 2304,
+					"itemId": 26245
+				},
+				{
+					"name": "Scarred tablet",
+					"rarity": "1/25.8",
+					"oneIn": 26,
+					"itemId": 28332
+				},
+				{
+					"name": "Awakener's orb",
+					"rarity": "1/53.6",
+					"oneIn": 54,
+					"itemId": 28334
 				},
 				{
 					"name": "Smoke quartz",
 					"rarity": "1/206.0",
-					"oneIn": 206
+					"oneIn": 206,
+					"itemId": 28274
 				},
 				{
 					"name": "Lil'viathan",
 					"rarity": "1/2500",
-					"oneIn": 2500
+					"oneIn": 2500,
+					"itemId": 28252
+				},
+				{
+					"name": "Ancient blood ornament kit",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 28336
 				}
 			]
 		},
@@ -1015,52 +1486,62 @@
 				{
 					"name": "Nightmare staff",
 					"rarity": "1/300",
-					"oneIn": 300
+					"oneIn": 300,
+					"itemId": 24422
 				},
 				{
 					"name": "Inquisitor's great helm",
 					"rarity": "1/420",
-					"oneIn": 420
+					"oneIn": 420,
+					"itemId": 24419
 				},
 				{
 					"name": "Inquisitor's hauberk",
 					"rarity": "1/420",
-					"oneIn": 420
+					"oneIn": 420,
+					"itemId": 24420
 				},
 				{
 					"name": "Inquisitor's plateskirt",
 					"rarity": "1/420",
-					"oneIn": 420
+					"oneIn": 420,
+					"itemId": 24421
 				},
 				{
 					"name": "Inquisitor's mace",
 					"rarity": "1/750",
-					"oneIn": 750
+					"oneIn": 750,
+					"itemId": 24417
 				},
 				{
 					"name": "Eldritch orb",
 					"rarity": "1/960",
-					"oneIn": 960
+					"oneIn": 960,
+					"itemId": 24517
 				},
 				{
 					"name": "Harmonised orb",
 					"rarity": "1/960",
-					"oneIn": 960
+					"oneIn": 960,
+					"itemId": 24511
 				},
 				{
 					"name": "Volatile orb",
 					"rarity": "1/960",
-					"oneIn": 960
+					"oneIn": 960,
+					"itemId": 24514
 				},
 				{
 					"name": "Little nightmare",
 					"rarity": "1/800",
-					"oneIn": 800
+					"oneIn": 800,
+					"itemId": 24491
 				},
 				{
 					"name": "Jar of dreams",
 					"rarity": "1/1900",
-					"oneIn": 1900
+					"oneIn": 1900,
+					"itemId": 24495
 				}
 			]
 		},
@@ -1070,37 +1551,68 @@
 				{
 					"name": "Bellator vestige",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 28279
+				},
+				{
+					"name": "Chromium ingot",
+					"rarity": "3/512",
+					"oneIn": 171,
+					"itemId": 28276
 				},
 				{
 					"name": "Siren's staff",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 28323
 				},
 				{
 					"name": "Virtus mask",
 					"rarity": "1/1536",
-					"oneIn": 1536
+					"oneIn": 1536,
+					"itemId": 26241
 				},
 				{
 					"name": "Virtus robe top",
 					"rarity": "1/1536",
-					"oneIn": 1536
+					"oneIn": 1536,
+					"itemId": 26243
 				},
 				{
 					"name": "Virtus robe bottom",
 					"rarity": "1/1536",
-					"oneIn": 1536
+					"oneIn": 1536,
+					"itemId": 26245
+				},
+				{
+					"name": "Sirenic tablet",
+					"rarity": "1/26.2",
+					"oneIn": 26,
+					"itemId": 28331
+				},
+				{
+					"name": "Awakener's orb",
+					"rarity": "1/34.5",
+					"oneIn": 35,
+					"itemId": 28334
 				},
 				{
 					"name": "Shadow quartz",
 					"rarity": "1/209.3",
-					"oneIn": 209
+					"oneIn": 209,
+					"itemId": 28272
+				},
+				{
+					"name": "Ancient blood ornament kit",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 28336
 				},
 				{
 					"name": "Wisp",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 28246
 				}
 			]
 		},
@@ -1110,32 +1622,38 @@
 				{
 					"name": "Occult necklace",
 					"rarity": "1/350",
-					"oneIn": 350
+					"oneIn": 350,
+					"itemId": 12002
 				},
 				{
 					"name": "Smoke battlestaff",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 11998
 				},
 				{
 					"name": "Dragon chainbody",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 2513
 				},
 				{
 					"name": "Shark lure",
 					"rarity": "3/856",
-					"oneIn": 285
+					"oneIn": 285,
+					"itemId": -1
 				},
 				{
 					"name": "Jar of smoke",
 					"rarity": "1/2000",
-					"oneIn": 2000
+					"oneIn": 2000,
+					"itemId": 25524
 				},
 				{
 					"name": "Pet smoke devil",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12648
 				}
 			]
 		},
@@ -1153,7 +1671,8 @@
 				{
 					"name": "Tzrek-jad",
 					"rarity": "1/200",
-					"oneIn": 200
+					"oneIn": 200,
+					"itemId": 13225
 				}
 			]
 		},
@@ -1167,42 +1686,74 @@
 				{
 					"name": "Ultor vestige",
 					"rarity": "1/1088",
-					"oneIn": 1088
+					"oneIn": 1088,
+					"itemId": 28285
 				},
 				{
 					"name": "Chromium ingot",
 					"rarity": "3/1088",
-					"oneIn": 363
+					"oneIn": 363,
+					"itemId": 28276
 				},
 				{
 					"name": "Executioner's axe head",
 					"rarity": "1/1088",
-					"oneIn": 1088
+					"oneIn": 1088,
+					"itemId": 28319
 				},
 				{
 					"name": "Virtus mask",
 					"rarity": "1/3264",
-					"oneIn": 3264
+					"oneIn": 3264,
+					"itemId": 26241
 				},
 				{
 					"name": "Virtus robe top",
 					"rarity": "1/3264",
-					"oneIn": 3264
+					"oneIn": 3264,
+					"itemId": 26243
 				},
 				{
 					"name": "Virtus robe bottom",
 					"rarity": "1/3264",
-					"oneIn": 3264
+					"oneIn": 3264,
+					"itemId": 26245
+				},
+				{
+					"name": "Strangled tablet",
+					"rarity": "1/25.5",
+					"oneIn": 26,
+					"itemId": 28330
+				},
+				{
+					"name": "Awakener's orb",
+					"rarity": "1/80.6",
+					"oneIn": 81,
+					"itemId": 28334
 				},
 				{
 					"name": "Blood quartz",
 					"rarity": "1/204.0",
-					"oneIn": 204
+					"oneIn": 204,
+					"itemId": 28268
+				},
+				{
+					"name": "Temple key (Desert Treasure II)",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": -1
+				},
+				{
+					"name": "Ancient blood ornament kit",
+					"rarity": "Always",
+					"oneIn": 0,
+					"itemId": 28336
 				},
 				{
 					"name": "Butch",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 28248
 				}
 			]
 		},
@@ -1214,19 +1765,34 @@
 			"name": "Venenatis",
 			"uniques": [
 				{
+					"name": "Fangs of venenatis",
+					"rarity": "1/196",
+					"oneIn": 196,
+					"itemId": 27670
+				},
+				{
 					"name": "Voidwaker gem",
 					"rarity": "1/360",
-					"oneIn": 360
+					"oneIn": 360,
+					"itemId": 27687
 				},
 				{
 					"name": "Treasonous ring",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 12605
+				},
+				{
+					"name": "Strange fruit",
+					"rarity": "1/5",
+					"oneIn": 5,
+					"itemId": 464
 				},
 				{
 					"name": "Venenatis spiderling",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 13177
 				}
 			]
 		},
@@ -1242,24 +1808,34 @@
 			"name": "Vet'ion",
 			"uniques": [
 				{
+					"name": "Skull of vet'ion",
+					"rarity": "1/196",
+					"oneIn": 196,
+					"itemId": 27673
+				},
+				{
 					"name": "Voidwaker blade",
 					"rarity": "1/360",
-					"oneIn": 360
+					"oneIn": 360,
+					"itemId": 27684
 				},
 				{
 					"name": "Ring of the gods",
 					"rarity": "1/512",
-					"oneIn": 512
+					"oneIn": 512,
+					"itemId": 12601
 				},
 				{
 					"name": "Vet'ion jr.",
 					"rarity": "1/1500",
-					"oneIn": 1500
+					"oneIn": 1500,
+					"itemId": 13179
 				},
 				{
 					"name": "Skeleton champion scroll",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 6806
 				}
 			]
 		},
@@ -1269,37 +1845,56 @@
 				{
 					"name": "Onyx bolt tips",
 					"rarity": "7/2730",
-					"oneIn": 390
+					"oneIn": 390,
+					"itemId": 9194
 				},
 				{
 					"name": "Sapphire bolt tips",
 					"rarity": "5/2730",
-					"oneIn": 546
+					"oneIn": 546,
+					"itemId": 9189
+				},
+				{
+					"name": "Scaly blue dragonhide",
+					"rarity": "1/10",
+					"oneIn": 10,
+					"itemId": 27897
+				},
+				{
+					"name": "Vorkath's head",
+					"rarity": "1/50",
+					"oneIn": 50,
+					"itemId": 2425
 				},
 				{
 					"name": "Dragonbone necklace",
 					"rarity": "1/1000",
-					"oneIn": 1000
+					"oneIn": 1000,
+					"itemId": 22111
 				},
 				{
 					"name": "Jar of decay",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 22106
 				},
 				{
 					"name": "Vorki",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 21992
 				},
 				{
 					"name": "Draconic visage",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 11286
 				},
 				{
 					"name": "Skeletal visage",
 					"rarity": "1/5000",
-					"oneIn": 5000
+					"oneIn": 5000,
+					"itemId": 22006
 				}
 			]
 		},
@@ -1313,27 +1908,50 @@
 				{
 					"name": "Soulflame horn",
 					"rarity": "2/600",
-					"oneIn": 300
+					"oneIn": 300,
+					"itemId": -1
 				},
 				{
 					"name": "Oathplate helm",
 					"rarity": "1/600",
-					"oneIn": 600
+					"oneIn": 600,
+					"itemId": -1
 				},
 				{
 					"name": "Oathplate chest",
 					"rarity": "1/600",
-					"oneIn": 600
+					"oneIn": 600,
+					"itemId": -1
 				},
 				{
 					"name": "Oathplate legs",
 					"rarity": "1/600",
-					"oneIn": 600
+					"oneIn": 600,
+					"itemId": -1
+				},
+				{
+					"name": "Dossier",
+					"rarity": "1/12.1",
+					"oneIn": 12,
+					"itemId": 9589
+				},
+				{
+					"name": "Forgotten lockbox",
+					"rarity": "1/33",
+					"oneIn": 33,
+					"itemId": -1
+				},
+				{
+					"name": "Oathplate shards",
+					"rarity": "1/17.07",
+					"oneIn": 17,
+					"itemId": -1
 				},
 				{
 					"name": "Yami",
 					"rarity": "1/2500",
-					"oneIn": 2500
+					"oneIn": 2500,
+					"itemId": -1
 				}
 			]
 		},
@@ -1343,22 +1961,26 @@
 				{
 					"name": "Crystal tool seed",
 					"rarity": "39/8000",
-					"oneIn": 205
+					"oneIn": 205,
+					"itemId": 23953
 				},
 				{
 					"name": "Zalcano shard",
 					"rarity": "1/750",
-					"oneIn": 750
+					"oneIn": 750,
+					"itemId": 23908
 				},
 				{
 					"name": "Smolcano",
 					"rarity": "1/2250",
-					"oneIn": 2250
+					"oneIn": 2250,
+					"itemId": 23760
 				},
 				{
 					"name": "Uncut onyx",
 					"rarity": "1/8000",
-					"oneIn": 8000
+					"oneIn": 8000,
+					"itemId": 6571
 				}
 			]
 		},
@@ -1372,47 +1994,56 @@
 				{
 					"name": "Tanzanite fang",
 					"rarity": "1/1024",
-					"oneIn": 1024
+					"oneIn": 1024,
+					"itemId": 12922
 				},
 				{
 					"name": "Magic fang",
 					"rarity": "1/1024",
-					"oneIn": 1024
+					"oneIn": 1024,
+					"itemId": 12932
 				},
 				{
 					"name": "Serpentine visage",
 					"rarity": "1/1024",
-					"oneIn": 1024
+					"oneIn": 1024,
+					"itemId": 12927
 				},
 				{
 					"name": "Uncut onyx",
 					"rarity": "1/1024",
-					"oneIn": 1024
+					"oneIn": 1024,
+					"itemId": 6571
 				},
 				{
 					"name": "Tanzanite mutagen",
 					"rarity": "1/13107",
-					"oneIn": 13107
+					"oneIn": 13107,
+					"itemId": 13200
 				},
 				{
 					"name": "Magma mutagen",
 					"rarity": "1/13107",
-					"oneIn": 13107
+					"oneIn": 13107,
+					"itemId": 13201
 				},
 				{
 					"name": "Spirit seed",
 					"rarity": "1/249",
-					"oneIn": 249
+					"oneIn": 249,
+					"itemId": 5317
 				},
 				{
 					"name": "Jar of swamp",
 					"rarity": "1/3000",
-					"oneIn": 3000
+					"oneIn": 3000,
+					"itemId": 12936
 				},
 				{
 					"name": "Pet snakeling",
 					"rarity": "1/4000",
-					"oneIn": 4000
+					"oneIn": 4000,
+					"itemId": 12921
 				}
 			]
 		}

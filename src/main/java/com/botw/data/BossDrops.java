@@ -140,6 +140,13 @@ public class BossDrops
 		private String rarity = "";
 		private int oneIn;
 
+		/**
+		 * Resolved at build time, because the plugin's own item search reads the price API and that only
+		 * knows tradeable things — every pet came out without an icon, which is the half of the list
+		 * people care about most.
+		 */
+		private int itemId = -1;
+
 		public String getName()
 		{
 			return name;
@@ -154,6 +161,11 @@ public class BossDrops
 		public int getOneIn()
 		{
 			return oneIn;
+		}
+
+		public int getItemId()
+		{
+			return itemId;
 		}
 	}
 

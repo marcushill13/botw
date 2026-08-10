@@ -68,6 +68,7 @@ public class CreatePanel extends JPanel
 	private final Map<String, DropRule> drops = new LinkedHashMap<>();
 	private final JPanel dropList = new JPanel();
 
+	private final JPanel chosenBoss = new JPanel();
 	private final JTextField itemSearch = new JTextField();
 	private final JPanel itemResults = new JPanel();
 
@@ -90,6 +91,13 @@ public class CreatePanel extends JPanel
 		form.setBackground(Theme.BACKGROUND);
 		form.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
+		JLabel heading = new JLabel("NEW CHALLENGE");
+		heading.setFont(Theme.figure(18f));
+		heading.setForeground(Theme.GOLD);
+		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+		form.add(heading);
+		form.add(Cards.gap(10));
+
 		form.add(Cards.field("Challenge name", field(name)));
 		form.add(Cards.gap(8));
 
@@ -105,6 +113,14 @@ public class CreatePanel extends JPanel
 		form.add(Cards.field("Find a boss", field(bossSearch)));
 		form.add(Cards.gap(4));
 		form.add(bossPicker);
+		form.add(Cards.gap(6));
+
+		// Without this the search box still reads as a half-finished search once a boss is picked, and
+		// nothing on the screen says which one the challenge is actually about.
+		chosenBoss.setLayout(new BoxLayout(chosenBoss, BoxLayout.Y_AXIS));
+		chosenBoss.setBackground(Theme.BACKGROUND);
+		chosenBoss.setAlignmentX(Component.LEFT_ALIGNMENT);
+		form.add(chosenBoss);
 		form.add(Cards.gap(8));
 
 		form.add(Cards.sectionLabel("Kill count"));
@@ -131,9 +147,14 @@ public class CreatePanel extends JPanel
 
 		bossSearch.getDocument().addDocumentListener(onType(this::refillBossPicker));
 		itemSearch.getDocument().addDocumentListener(onType(this::refillItemResults));
-		bossPicker.addActionListener(event -> fillDropsFromBoss());
+		bossPicker.addActionListener(event ->
+		{
+			fillDropsFromBoss();
+			showChosenBoss();
+		});
 
 		refillBossPicker();
+		showChosenBoss();
 		prefillTimes();
 	}
 
@@ -186,6 +207,34 @@ public class CreatePanel extends JPanel
 		timezone.setSelectedItem(ZoneId.systemDefault().getId());
 	}
 
+	/**
+	 * A plain statement of which boss this challenge is about, under the search.
+	 */
+	private void showChosenBoss()
+	{
+		chosenBoss.removeAll();
+
+		BossDrops.Boss boss = (BossDrops.Boss) bossPicker.getSelectedItem();
+		if (boss != null)
+		{
+			JPanel card = new JPanel(new BorderLayout());
+			card.setBackground(Theme.CARD);
+			card.setBorder(BorderFactory.createEmptyBorder(6, 8, 6, 8));
+			card.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+			JLabel chosen = new JLabel(boss.getName());
+			chosen.setFont(Theme.heading());
+			chosen.setForeground(Theme.GOLD);
+			card.add(chosen, BorderLayout.CENTER);
+
+			card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+			chosenBoss.add(card);
+		}
+
+		chosenBoss.revalidate();
+		chosenBoss.repaint();
+	}
+
 	private void refillBossPicker()
 	{
 		DefaultComboBoxModel<BossDrops.Boss> model = new DefaultComboBoxModel<>();
@@ -216,7 +265,8 @@ public class CreatePanel extends JPanel
 		{
 			for (BossDrops.Unique unique : boss.getUniques())
 			{
-				drops.put(unique.getName(), new DropRule(unique.getName(), itemIdOf(unique.getName()), 0));
+				drops.put(unique.getName(),
+					new DropRule(unique.getName(), unique.getItemId(), 0));
 			}
 		}
 
@@ -247,18 +297,19 @@ public class CreatePanel extends JPanel
 	{
 		JPanel row = new JPanel(new BorderLayout(4, 0));
 		row.setBackground(Theme.CARD);
-		row.setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
+		row.setBorder(BorderFactory.createEmptyBorder(4, 5, 4, 5));
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		JLabel icon = new JLabel();
+		icon.setPreferredSize(new Dimension(32, 28));
 		if (rule.getItemId() > 0)
 		{
 			itemManager.getImage(rule.getItemId()).addTo(icon);
 		}
 		row.add(icon, BorderLayout.WEST);
 
-		JLabel label = new JLabel("<html><body style='width:78px'>" + rule.getName() + "</body></html>");
-		label.setFont(FontManager.getRunescapeSmallFont());
+		JLabel label = new JLabel("<html><body style='width:72px'>" + rule.getName() + "</body></html>");
+		label.setFont(Theme.body());
 		label.setForeground(Theme.TEXT);
 		row.add(label, BorderLayout.CENTER);
 
@@ -303,29 +354,27 @@ public class CreatePanel extends JPanel
 		}
 
 		List<ItemPrice> found = itemManager.search(query);
-		int shown = 0;
+		if (found.isEmpty())
+		{
+			JLabel none = new JLabel("Nothing matches that.");
+			none.setFont(Theme.body());
+			none.setForeground(Theme.TEXT_MUTED);
+			none.setAlignmentX(Component.LEFT_ALIGNMENT);
+			itemResults.add(none);
+		}
 
+		int shown = 0;
 		for (ItemPrice item : found)
 		{
-			if (shown++ >= 6)
+			// Enough to choose from without the panel growing past the screen. The rest are reached by
+			// typing more, which is faster than scrolling anyway.
+			if (shown++ >= 8)
 			{
 				break;
 			}
 
-			JButton add = Cards.button(item.getName());
-			add.setHorizontalAlignment(SwingConstants.LEFT);
-			add.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
-			add.setAlignmentX(Component.LEFT_ALIGNMENT);
-			itemManager.getImage(item.getId()).addTo(add);
-			add.addActionListener(event ->
-			{
-				drops.put(item.getName(), new DropRule(item.getName(), item.getId(), 0));
-				itemSearch.setText("");
-				refillItemResults();
-				rebuildDropList();
-			});
-
-			itemResults.add(add);
+			itemResults.add(searchResult(item));
+			itemResults.add(Cards.gap(2));
 		}
 
 		itemResults.revalidate();
@@ -333,21 +382,55 @@ public class CreatePanel extends JPanel
 	}
 
 	/**
-	 * The item id for a drop the wiki named, used only to draw its icon. Zero when the search cannot
-	 * place it, which costs an icon and nothing else — matching is done on the name.
+	 * One search result: icon, name, and a row tall enough to hit.
+	 * <p>
+	 * Was a text button barely taller than its own text, which made the list look broken and gave
+	 * nothing to aim at.
 	 */
-	private int itemIdOf(String name)
+	private JPanel searchResult(ItemPrice item)
 	{
-		List<ItemPrice> found = itemManager.search(name);
-		for (ItemPrice item : found)
-		{
-			if (item.getName().equalsIgnoreCase(name))
-			{
-				return item.getId();
-			}
-		}
+		JPanel row = new JPanel(new BorderLayout(6, 0));
+		row.setBackground(Theme.CARD);
+		row.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+		row.setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.HAND_CURSOR));
 
-		return found.isEmpty() ? -1 : found.get(0).getId();
+		JLabel icon = new JLabel();
+		icon.setPreferredSize(new Dimension(32, 28));
+		itemManager.getImage(item.getId()).addTo(icon);
+		row.add(icon, BorderLayout.WEST);
+
+		JLabel label = new JLabel("<html><body style='width:120px'>" + item.getName() + "</body></html>");
+		label.setFont(Theme.body());
+		label.setForeground(Theme.TEXT);
+		row.add(label, BorderLayout.CENTER);
+
+		row.addMouseListener(new java.awt.event.MouseAdapter()
+		{
+			@Override
+			public void mouseClicked(java.awt.event.MouseEvent event)
+			{
+				drops.put(item.getName(), new DropRule(item.getName(), item.getId(), 0));
+				itemSearch.setText("");
+				refillItemResults();
+				rebuildDropList();
+			}
+
+			@Override
+			public void mouseEntered(java.awt.event.MouseEvent event)
+			{
+				row.setBackground(Theme.CARD_HOVER);
+			}
+
+			@Override
+			public void mouseExited(java.awt.event.MouseEvent event)
+			{
+				row.setBackground(Theme.CARD);
+			}
+		});
+
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+		return row;
 	}
 
 	private void submit()

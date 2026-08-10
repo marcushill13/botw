@@ -76,15 +76,27 @@ public class BotwPanel extends PluginPanel
 
 		setLayout(new BorderLayout());
 		setBackground(Theme.BACKGROUND);
+		setOpaque(true);
+
+		// PluginPanel pads itself, and that padding paints in whatever the panel's background is —
+		// which is where the pale frame around everything came from. Removed here and put back inside
+		// the scroll pane, so the dark goes right to the edge.
+		setBorder(BorderFactory.createEmptyBorder());
 
 		content.setLayout(new BorderLayout());
 		content.setBackground(Theme.BACKGROUND);
+		content.setOpaque(true);
+		content.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
 		JScrollPane scroll = new JScrollPane(
 			content, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		scroll.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
+		scroll.setBorder(BorderFactory.createEmptyBorder());
+		scroll.setBackground(Theme.BACKGROUND);
+		scroll.setOpaque(true);
 		scroll.getVerticalScrollBar().setUnitIncrement(16);
+		scroll.getVerticalScrollBar().setBackground(Theme.BACKGROUND);
 		scroll.getViewport().setBackground(Theme.BACKGROUND);
+		scroll.getViewport().setOpaque(true);
 		add(scroll, BorderLayout.CENTER);
 
 		showList();

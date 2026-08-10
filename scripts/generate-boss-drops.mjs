@@ -24,20 +24,53 @@ import { fileURLToPath } from 'node:url';
 
 const WIKI = 'https://oldschool.runescape.wiki/api.php';
 
+/**
+ * Item ids, resolved here rather than in the plugin.
+ *
+ * The plugin's own item search reads the price API, which only knows tradeable things — so every pet
+ * and every untradeable came out without an icon, which is exactly the half of the list people care
+ * about. This source has ids for everything.
+ */
+const ITEMS = 'https://raw.githubusercontent.com/0xNeffarion/osrsreboxed-db/master/docs/items-summary.json';
+
 /** Politeness, and the wiki asks for a contactable agent. */
 const USER_AGENT = 'BotW RuneLite plugin data generator (github.com/marcushill13/botw)';
 
-/** A drop rarer than one in this many is treated as a unique. */
+/**
+ * A drop rarer than one in this many is treated as a unique.
+ *
+ * Only applies outside the sections listed below. Amoxliatl's glacial temotli is 1/100 and would fail
+ * this, but it sits in Tertiary and is caught there — which was the actual fix. Loosening this instead
+ * dragged in raw sharks, runes and cheese.
+ */
 const RARITY_FLOOR = 200;
 
 /**
  * A drop shared by more bosses than this is not a unique. Godsword shards are dropped by all four God
- * Wars generals and are genuinely their uniques, so the line has to sit above four.
+ * Wars generals and are genuinely theirs, so the line sits at four rather than below it. Clue scrolls
+ * and caskets are above it and go.
  */
-const SHARED_BY_AT_MOST = 6;
+const SHARED_BY_AT_MOST = 4;
 
 /** The shared table every boss rolls. Its contents say nothing about which boss you killed. */
-const SHARED_SECTIONS = ['rare drop table', 'gem drop table', 'universal', 'tertiary drops'];
+const SHARED_SECTIONS = ['rare drop table', 'gem drop table', 'universal'];
+
+/**
+ * Sections that are uniques whatever the rarity says.
+ *
+ * Tertiary is where the pets, the jars and a good number of boss-specific items live, and several of
+ * those are commoner than the rarity rule allows for. Anything shared across the game — clue scrolls,
+ * key halves — is caught later by the count of how many bosses drop it, so nothing has to be listed
+ * here by hand.
+ */
+const ALWAYS_UNIQUE_SECTIONS = ['tertiary', 'unique'];
+
+/**
+ * Things that sit in Tertiary on many bosses and are nobody's idea of that boss's unique. Named
+ * outright because the count-across-bosses rule does not catch them: only a handful of the bosses in
+ * this list drop clues at all, so they never look shared enough to cull.
+ */
+const NEVER_UNIQUE = ['clue scroll', 'reward casket', 'ensouled', "champion's scroll"];
 
 const OUT = path.join(
 	path.dirname(fileURLToPath(import.meta.url)),
@@ -232,8 +265,16 @@ function uniquesOf(drops)
 			continue;
 		}
 
+		if (NEVER_UNIQUE.some((junk) => drop.name.toLowerCase().includes(junk)))
+		{
+			continue;
+		}
+
+		const alwaysUnique = ALWAYS_UNIQUE_SECTIONS.some(
+			(section) => drop.section.toLowerCase().includes(section));
+
 		const denominator = oneIn(drop.rarity);
-		if (denominator === null || denominator < RARITY_FLOOR)
+		if (!alwaysUnique && (denominator === null || denominator < RARITY_FLOOR))
 		{
 			continue;
 		}
@@ -245,14 +286,54 @@ function uniquesOf(drops)
 		}
 
 		seen.add(drop.name);
-		uniques.push({ name: drop.name, rarity: drop.rarity, oneIn: Math.round(denominator) });
+		uniques.push({
+			name: drop.name,
+			rarity: drop.rarity,
+			oneIn: denominator === null ? 0 : Math.round(denominator)
+		});
 	}
 
 	return uniques;
 }
 
+/**
+ * Name to item id, lowercased. Where a name has several ids — a pet with a variant per state — the
+ * lowest is taken, which is the one the game shows.
+ */
+async function itemIds()
+{
+	const response = await fetch(ITEMS, { headers: { 'User-Agent': USER_AGENT } });
+	if (!response.ok)
+	{
+		throw new Error(`Item list: HTTP ${response.status}`);
+	}
+
+	const items = await response.json();
+	const byName = new Map();
+
+	for (const item of Object.values(items))
+	{
+		const key = String(item.name ?? '').toLowerCase();
+		if (!key)
+		{
+			continue;
+		}
+
+		const existing = byName.get(key);
+		if (existing === undefined || item.id < existing)
+		{
+			byName.set(key, item.id);
+		}
+	}
+
+	return byName;
+}
+
 async function main()
 {
+	const ids = await itemIds();
+	console.log(`Resolved ${ids.size} item names`);
+
 	const bosses = JSON.parse(
 		await fs.readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'bosses.json'), 'utf8'));
 
@@ -281,6 +362,10 @@ async function main()
 		}
 
 		const uniques = uniquesOf(parseDrops(wikitext));
+		for (const unique of uniques)
+		{
+			unique.itemId = ids.get(unique.name.toLowerCase()) ?? -1;
+		}
 		if (uniques.length === 0)
 		{
 			withoutUniques++;

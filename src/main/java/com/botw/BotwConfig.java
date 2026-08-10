@@ -10,10 +10,24 @@ public interface BotwConfig extends Config
 	@ConfigItem(
 		keyName = "screenshotDrops",
 		name = "Screenshot scoring drops",
-		description = "Saves a picture whenever a drop scores you points, filed under the challenge's name.",
+		description = "Saves a picture to your own screenshots folder whenever a drop scores you points.",
 		position = 0
 	)
 	default boolean screenshotDrops()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "shareScreenshots",
+		name = "Send screenshots to the challenge creator",
+		description =
+			"Sends a small copy of each scoring drop's screenshot to whoever runs the challenge, "
+				+ "so they can verify it. Only they can see it. Turn this off to keep every screenshot "
+				+ "on your own machine.",
+		position = 1
+	)
+	default boolean shareScreenshots()
 	{
 		return true;
 	}

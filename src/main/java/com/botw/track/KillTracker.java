@@ -126,8 +126,13 @@ public class KillTracker
 						// of rather than to a timestamp that has to be matched up by eye.
 						if (config.screenshotDrops())
 						{
+							// The code is only passed when sharing is on. Without it the picture is
+							// saved locally and goes nowhere, which is what that setting means.
 							screenshotter.capture(
-								challenge.getName(), name, challenge.getCode(), drop.getId());
+								challenge.getName(),
+								name,
+								config.shareScreenshots() ? challenge.getCode() : null,
+								config.shareScreenshots() ? drop.getId() : null);
 						}
 					}
 				}

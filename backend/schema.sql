@@ -79,3 +79,30 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE INDEX IF NOT EXISTS events_by_challenge ON events (challenge_code, rsn);
 CREATE INDEX IF NOT EXISTS challenges_by_creator ON challenges (creator_rsn);
+
+-- Evidence.
+--
+-- The clan already verifies drops with screenshots sent to Discord, so the same pictures are kept
+-- here instead — organised by challenge and by player, and gathered without anyone having to remember
+-- to press a key at the moment a pet drops.
+--
+-- Stored as a downscaled JPEG inline rather than in object storage. A scoring drop is a rare event —
+-- a unique or a pet, not every kill — so a week of a fifty-person clan is a few hundred images at
+-- forty kilobytes. That fits here comfortably and saves running a second service.
+--
+-- The full-resolution original never leaves the player's machine; this is the readable copy.
+CREATE TABLE IF NOT EXISTS shots (
+	-- The event it belongs to, so an upload that is retried replaces rather than duplicates.
+	event_id       TEXT PRIMARY KEY,
+
+	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
+	rsn            TEXT NOT NULL,
+	item_name      TEXT NOT NULL,
+	occurred_at    INTEGER NOT NULL,
+	uploaded_at    INTEGER NOT NULL,
+
+	-- base64 JPEG.
+	image          TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS shots_by_challenge ON shots (challenge_code, rsn);

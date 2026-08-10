@@ -115,14 +115,19 @@ public class KillTracker
 					String name = itemName(stack);
 					if (name != null && challenge.counts(name))
 					{
-						recorded.add(PendingEvent.drop(
-							challenge.getCode(), name, stack.getQuantity(), now));
+						PendingEvent drop = PendingEvent.drop(
+							challenge.getCode(), name, stack.getQuantity(), now);
+						recorded.add(drop);
 
 						// Only for drops that actually score. A screenshot per kill would bury the ones
 						// worth keeping and fill someone's disk in a week.
+						//
+						// Keyed to the event, so the creator's copy is tied to the drop it is evidence
+						// of rather than to a timestamp that has to be matched up by eye.
 						if (config.screenshotDrops())
 						{
-							screenshotter.capture(challenge.getName(), name);
+							screenshotter.capture(
+								challenge.getName(), name, challenge.getCode(), drop.getId());
 						}
 					}
 				}

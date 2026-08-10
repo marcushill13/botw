@@ -11,6 +11,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -156,6 +157,117 @@ public class BotwApi
 			.url(url(baseUrl, "v1", "challenges", code, "events"))
 			.post(RequestBody.create(JSON, gson.toJson(body)))
 			.header("X-Participant-Token", participantToken));
+	}
+
+	/**
+	 * One screenshot, as evidence the creator can look at without asking anyone for it.
+	 */
+	public Result<Snapshot> uploadShot(
+		String baseUrl, String code, String participantToken, String eventId, String itemName,
+		long occurredAt, byte[] jpeg)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("eventId", eventId);
+		body.addProperty("itemName", itemName);
+		body.addProperty("occurredAt", occurredAt);
+		body.addProperty("image", Base64.getEncoder().encodeToString(jpeg));
+
+		return send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "shots"))
+			.post(RequestBody.create(JSON, gson.toJson(body)))
+			.header("X-Participant-Token", participantToken));
+	}
+
+	/**
+	 * What evidence exists, without the pictures. Creator only.
+	 */
+	public Result<List<Shot>> listShots(String baseUrl, String code, String creatorToken)
+	{
+		Request request = new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "shots"))
+			.get()
+			.header("X-Creator-Token", creatorToken)
+			.build();
+
+		try (Response response = httpClient.newCall(request).execute())
+		{
+			ResponseBody responseBody = response.body();
+			String text = responseBody == null ? "" : responseBody.string();
+
+			if (!response.isSuccessful())
+			{
+				return Result.failed(messageIn(text, "Could not load the evidence"));
+			}
+
+			JsonObject root = gson.fromJson(text, JsonObject.class);
+			Type type = new TypeToken<List<Shot>>()
+			{
+			}.getType();
+
+			List<Shot> shots = root != null && root.has("shots")
+				? gson.fromJson(root.get("shots"), type)
+				: new ArrayList<>();
+
+			return Result.of(shots == null ? new ArrayList<>() : shots);
+		}
+		catch (IOException e)
+		{
+			return Result.failed("Could not reach the server");
+		}
+		catch (JsonSyntaxException e)
+		{
+			return Result.failed("The server sent something unreadable");
+		}
+	}
+
+	/**
+	 * One picture, fetched only when it is opened. A hundred thumbnails in one response would be
+	 * several megabytes for a screen most of which is never looked at.
+	 */
+	public Result<byte[]> readShot(String baseUrl, String code, String creatorToken, String eventId)
+	{
+		Request request = new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "shots", eventId))
+			.get()
+			.header("X-Creator-Token", creatorToken)
+			.build();
+
+		try (Response response = httpClient.newCall(request).execute())
+		{
+			ResponseBody responseBody = response.body();
+			String text = responseBody == null ? "" : responseBody.string();
+
+			if (!response.isSuccessful())
+			{
+				return Result.failed(messageIn(text, "Could not load that screenshot"));
+			}
+
+			JsonObject root = gson.fromJson(text, JsonObject.class);
+			if (root == null || !root.has("image"))
+			{
+				return Result.failed("That screenshot is missing");
+			}
+
+			return Result.of(Base64.getDecoder().decode(root.get("image").getAsString()));
+		}
+		catch (IOException e)
+		{
+			return Result.failed("Could not reach the server");
+		}
+		catch (JsonSyntaxException | IllegalArgumentException e)
+		{
+			return Result.failed("That screenshot is unreadable");
+		}
+	}
+
+	/** One piece of evidence, without its picture. */
+	@lombok.Data
+	public static class Shot
+	{
+		private String eventId = "";
+		private String rsn = "";
+		private String itemName = "";
+		private long occurredAt;
 	}
 
 	private Result<Snapshot> send(Request.Builder builder)

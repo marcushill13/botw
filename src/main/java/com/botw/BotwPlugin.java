@@ -1,5 +1,7 @@
 package com.botw;
 
+import com.botw.net.BotwApi;
+import com.botw.track.Screenshotter;
 import com.botw.ui.BotwPanel;
 import com.botw.track.ChallengeStore;
 import com.botw.track.EventSender;
@@ -11,6 +13,7 @@ import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -54,6 +57,18 @@ public class BotwPlugin extends Plugin
 	private BotwPanel panel;
 
 	@Inject
+	private Screenshotter screenshotter;
+
+	@Inject
+	private BotwApi api;
+
+	@Inject
+	private BotwConfig config;
+
+	@Inject
+	private ScheduledExecutorService executor;
+
+	@Inject
 	private ClientToolbar clientToolbar;
 
 	private NavigationButton navigationButton;
@@ -80,6 +95,25 @@ public class BotwPlugin extends Plugin
 		// player pressing anything.
 		sender.setOnSent(panel::onPointsSent);
 		sender.start();
+
+		// Evidence goes to the creator on a background thread. Best effort by design: the full-size
+		// copy is already on the player's disk, so a failed upload costs a thumbnail rather than proof.
+		screenshotter.setUploader((code, eventId, itemName, jpeg) -> executor.execute(() ->
+		{
+			String token = challenges.participantTokenFor(code);
+			if (token == null)
+			{
+				return;
+			}
+
+			BotwApi.Result<BotwApi.Snapshot> result = api.uploadShot(
+				config.serverUrl(), code, token, eventId, itemName, System.currentTimeMillis(), jpeg);
+
+			if (!result.ok())
+			{
+				log.debug("Could not upload evidence for {}: {}", itemName, result.getError());
+			}
+		}));
 
 		navigationButton = NavigationButton.builder()
 			.tooltip("Boss of the Week")

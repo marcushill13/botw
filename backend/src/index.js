@@ -27,6 +27,9 @@ const TOKEN_BYTES = 24;
 /** One request cannot carry more than this many events. Keeps a bad client from flooding the table. */
 const MAX_EVENTS_PER_REQUEST = 50;
 
+/** About 700KB of base64, which is far more than a downscaled screenshot needs. */
+const MAX_IMAGE_CHARS = 900000;
+
 export default {
 	async fetch(request, env)
 	{
@@ -79,6 +82,23 @@ async function route(request, env)
 	if (events && request.method === 'POST')
 	{
 		return withCors(await submitEvents(events[1].toUpperCase(), request, env));
+	}
+
+	const shots = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/shots$/);
+	if (shots && request.method === 'POST')
+	{
+		return withCors(await uploadShot(shots[1].toUpperCase(), request, env));
+	}
+
+	if (shots && request.method === 'GET')
+	{
+		return withCors(await listShots(shots[1].toUpperCase(), request, env));
+	}
+
+	const shot = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/shots\/([^/]+)$/);
+	if (shot && request.method === 'GET')
+	{
+		return withCors(await readShot(shot[1].toUpperCase(), decodeURIComponent(shot[2]), request, env));
 	}
 
 	const mine = path.match(/^\/v1\/creators\/([^/]+)\/challenges$/);
@@ -315,6 +335,117 @@ async function submitEvents(code, request, env)
 		you: await scoreFor(code, participant.rsn, env),
 		leaderboard: await leaderboardFor(code, env)
 	});
+}
+
+/**
+ * Keeps the picture that goes with a scoring drop.
+ *
+ * Keyed on the event, so an upload retried after a timeout replaces rather than duplicates — the same
+ * reasoning as the events themselves.
+ */
+async function uploadShot(code, request, env)
+{
+	const participant = await participantFor(code, request, env);
+	if (!participant)
+	{
+		return json({ error: 'Join the challenge before sending anything' }, 403);
+	}
+
+	const body = await readJson(request);
+	if (!body || typeof body.eventId !== 'string' || typeof body.image !== 'string')
+	{
+		return json({ error: 'An event and an image are required' }, 400);
+	}
+
+	// A downscaled JPEG is tens of kilobytes. Anything approaching a megabyte is either a mistake or
+	// somebody filling the database, and neither should be stored.
+	if (body.image.length > MAX_IMAGE_CHARS)
+	{
+		return json({ error: 'That image is too large' }, 413);
+	}
+
+	await env.DB.prepare(
+		`INSERT OR REPLACE INTO shots
+			(event_id, challenge_code, rsn, item_name, occurred_at, uploaded_at, image)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`)
+		.bind(
+			body.eventId,
+			code,
+			participant.rsn,
+			String(body.itemName ?? '').slice(0, 120),
+			Number(body.occurredAt) || Date.now(),
+			Date.now(),
+			body.image)
+		.run();
+
+	return json({ stored: true });
+}
+
+/**
+ * What evidence exists, without the images themselves.
+ *
+ * Only the creator sees this. It is the list they would otherwise be asking Discord for, and sending
+ * every participant everyone else's screenshots would be a different thing entirely.
+ */
+async function listShots(code, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can see the evidence' }, 403);
+	}
+
+	const rows = await env.DB.prepare(
+		`SELECT event_id AS eventId, rsn, item_name AS itemName, occurred_at AS occurredAt
+		   FROM shots
+		  WHERE challenge_code = ?
+		  ORDER BY rsn ASC, occurred_at DESC`)
+		.bind(code)
+		.all();
+
+	return json({ shots: rows.results ?? [] });
+}
+
+/**
+ * One image. Fetched only when the creator opens it, because a hundred thumbnails in one response
+ * would be several megabytes for a screen most of which is never looked at.
+ */
+async function readShot(code, eventId, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can see the evidence' }, 403);
+	}
+
+	const row = await env.DB.prepare(
+		'SELECT image, item_name AS itemName, rsn FROM shots WHERE challenge_code = ? AND event_id = ?')
+		.bind(code, eventId)
+		.first();
+
+	if (!row)
+	{
+		return json({ error: 'No such screenshot' }, 404);
+	}
+
+	return json(row);
+}
+
+async function participantFor(code, request, env)
+{
+	return env.DB.prepare('SELECT rsn FROM participants WHERE challenge_code = ? AND token = ?')
+		.bind(code, request.headers.get('X-Participant-Token'))
+		.first();
 }
 
 async function challengesCreatedBy(rsn, env)

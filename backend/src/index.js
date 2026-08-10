@@ -307,6 +307,7 @@ async function submitEvents(code, request, env)
 	if (statements.length > 0)
 	{
 		await env.DB.batch(statements);
+		await refreshTotals(code, participant.rsn, env);
 	}
 
 	return json({
@@ -336,15 +337,11 @@ function pointsFor(event, challenge, drops)
 {
 	if (event.kind === 'kc')
 	{
-		const kills = Math.max(0, Math.trunc(Number(event.amount) || 0));
-		if (challenge.kc_per <= 0)
-		{
-			return null;
-		}
-
-		// Whole thresholds only. The plugin sends the kills it has banked; the leftovers stay with it
-		// until they add up to another threshold.
-		return Math.trunc(kills / challenge.kc_per) * challenge.kc_points;
+		// A kill is worth nothing on its own — it is worth something once enough of them have
+		// accumulated. Scoring each report separately would mean seven kills then eight scored zero
+		// against a threshold of ten, because each report truncates on its own. So kill events carry
+		// their count and no points, and the threshold is applied to the running total instead.
+		return 0;
 	}
 
 	const name = String(event.itemName ?? '').toLowerCase();
@@ -386,24 +383,64 @@ async function recomputePoints(code, env)
 	{
 		await env.DB.batch(statements);
 	}
+
+	// Every participant's total has just changed underneath them.
+	const participants = await env.DB.prepare(
+		'SELECT rsn FROM participants WHERE challenge_code = ?').bind(code).all();
+
+	for (const participant of participants.results ?? [])
+	{
+		await refreshTotals(code, participant.rsn, env, challenge);
+	}
 }
 
+/**
+ * The leaderboard, read from the running totals rather than summed from the events.
+ *
+ * This is the most-read thing in the service and the cheapest it can be: one row per participant.
+ * Summing the event table instead would mean reading every kill anyone has logged every time anyone
+ * glances at the panel, which is how a free tier's read allowance disappears in an afternoon.
+ */
 async function leaderboardFor(code, env)
 {
 	const rows = await env.DB.prepare(
-		`SELECT p.rsn AS rsn,
-		        COALESCE(SUM(e.points), 0) AS points,
-		        COALESCE(SUM(CASE WHEN e.kind = 'kc' THEN e.amount ELSE 0 END), 0) AS kills,
-		        COALESCE(SUM(CASE WHEN e.kind = 'drop' THEN 1 ELSE 0 END), 0) AS drops
-		   FROM participants p
-		   LEFT JOIN events e ON e.challenge_code = p.challenge_code AND e.rsn = p.rsn
-		  WHERE p.challenge_code = ?
-		  GROUP BY p.rsn
-		  ORDER BY points DESC, kills DESC, p.rsn ASC`)
+		`SELECT rsn, points, kills, drops
+		   FROM participants
+		  WHERE challenge_code = ?
+		  ORDER BY points DESC, kills DESC, rsn ASC`)
 		.bind(code)
 		.all();
 
 	return rows.results ?? [];
+}
+
+/**
+ * Rebuilds one participant's totals from their events. Called after anything is written, so the
+ * totals can never drift from the events they came from.
+ */
+async function refreshTotals(code, rsn, env, challenge = null)
+{
+	const rules = challenge ?? await loadChallenge(code, env);
+
+	const totals = await env.DB.prepare(
+		`SELECT COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kills,
+		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN points ELSE 0 END), 0) AS dropPoints,
+		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN 1 ELSE 0 END), 0) AS drops
+		   FROM events
+		  WHERE challenge_code = ? AND rsn = ?`)
+		.bind(code, rsn)
+		.first();
+
+	// The threshold applies to everything killed so far, not to each report of it.
+	const kills = totals?.kills ?? 0;
+	const killPoints = rules.kc_per > 0
+		? Math.trunc(kills / rules.kc_per) * rules.kc_points
+		: 0;
+
+	await env.DB.prepare(
+		'UPDATE participants SET points = ?, kills = ?, drops = ? WHERE challenge_code = ? AND rsn = ?')
+		.bind(killPoints + (totals?.dropPoints ?? 0), kills, totals?.drops ?? 0, code, rsn)
+		.run();
 }
 
 /**

@@ -37,6 +37,18 @@ CREATE TABLE IF NOT EXISTS participants (
 	token          TEXT NOT NULL,
 	joined_at      INTEGER NOT NULL,
 
+	-- Running totals, kept alongside the events rather than derived from them on every read.
+	--
+	-- The leaderboard is the most-read thing here and summing the event table to build it means
+	-- reading every kill anyone has logged, every time anyone looks. A week of fifty people at a
+	-- thousand kills is fifty thousand rows per glance, which burns through a day's read allowance in
+	-- an afternoon. These three columns make that read cost one row per participant instead.
+	--
+	-- The events remain the source of truth: these are rebuilt from them whenever points change.
+	points         INTEGER NOT NULL DEFAULT 0,
+	kills          INTEGER NOT NULL DEFAULT 0,
+	drops          INTEGER NOT NULL DEFAULT 0,
+
 	PRIMARY KEY (challenge_code, rsn)
 );
 

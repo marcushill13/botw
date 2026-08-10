@@ -8,6 +8,17 @@ import net.runelite.client.config.ConfigItem;
 public interface BotwConfig extends Config
 {
 	@ConfigItem(
+		keyName = "screenshotDrops",
+		name = "Screenshot scoring drops",
+		description = "Saves a picture whenever a drop scores you points, filed under the challenge's name.",
+		position = 0
+	)
+	default boolean screenshotDrops()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "serverUrl",
 		name = "Server address",
 		description = "Where challenges and leaderboards live. Leave this alone unless your clan runs its own.",

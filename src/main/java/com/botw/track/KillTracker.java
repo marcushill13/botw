@@ -1,5 +1,6 @@
 package com.botw.track;
 
+import com.botw.BotwConfig;
 import com.botw.data.Challenge;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -36,13 +37,22 @@ public class KillTracker
 	private final Outbox outbox;
 	private final ChallengeStore challenges;
 	private final ItemManager itemManager;
+	private final Screenshotter screenshotter;
+	private final BotwConfig config;
 
 	@Inject
-	private KillTracker(Outbox outbox, ChallengeStore challenges, ItemManager itemManager)
+	private KillTracker(
+		Outbox outbox,
+		ChallengeStore challenges,
+		ItemManager itemManager,
+		Screenshotter screenshotter,
+		BotwConfig config)
 	{
 		this.outbox = outbox;
 		this.challenges = challenges;
 		this.itemManager = itemManager;
+		this.screenshotter = screenshotter;
+		this.config = config;
 	}
 
 	@Subscribe
@@ -107,6 +117,13 @@ public class KillTracker
 					{
 						recorded.add(PendingEvent.drop(
 							challenge.getCode(), name, stack.getQuantity(), now));
+
+						// Only for drops that actually score. A screenshot per kill would bury the ones
+						// worth keeping and fill someone's disk in a week.
+						if (config.screenshotDrops())
+						{
+							screenshotter.capture(challenge.getName(), name);
+						}
 					}
 				}
 			}

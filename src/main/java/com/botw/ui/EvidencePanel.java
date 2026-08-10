@@ -269,7 +269,8 @@ public class EvidencePanel extends JPanel
 
 				try
 				{
-					// Scaled to the panel's width. The stored copy is 600px and the sidebar is not.
+					// Scaled to the panel's width. The stored copy is far wider than the sidebar, on
+					// purpose — this is a preview, and the export is where the full detail is read.
 					Image full = ImageIO.read(new ByteArrayInputStream(image.getValue()));
 					int width = Math.max(80, getWidth() - 40);
 					int height = full.getHeight(null) * width / Math.max(1, full.getWidth(null));

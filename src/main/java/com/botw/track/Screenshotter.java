@@ -10,7 +10,11 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageWriteParam;
+import javax.imageio.ImageWriter;
+import javax.imageio.stream.ImageOutputStream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +32,8 @@ import net.runelite.client.util.ImageCapture;
  * visage on the Vorkath week" should be one folder, not a scroll through a thousand images named after
  * timestamps.
  * <p>
- * Everything stays on the player's own machine. Nothing is uploaded anywhere.
+ * The full-size original stays on the player's own machine. Only a smaller copy is sent to the
+ * challenge's creator, and only when the player has left that setting on.
  */
 @Slf4j
 @Singleton
@@ -37,6 +42,20 @@ public class Screenshotter
 	private static final String ROOT = "Boss of the Week";
 	private static final DateTimeFormatter STAMP =
 		DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss", Locale.ENGLISH);
+
+	/** How wide the creator's copy is aimed at. Measured: at 1520 the game's own text reads cleanly. */
+	private static final int MAX_WIDTH = 1520;
+
+	/** …but never shrink past this much of the original, however large the client is. */
+	private static final double MIN_SCALE = 0.75;
+
+	/** What is polite to send and to keep. The service's own limit is a good deal higher. */
+	private static final int BUDGET_BYTES = 300 * 1024;
+
+	private static final float QUALITY = 0.80f;
+
+	/** Used only when the picture is too big at the first quality — a very large client. */
+	private static final float LOWER_QUALITY = 0.65f;
 
 	private final DrawManager drawManager;
 	private final ImageCapture imageCapture;
@@ -109,27 +128,111 @@ public class Screenshotter
 	}
 
 	/**
-	 * A small JPEG of the same picture.
+	 * The copy that goes to the creator: small enough to store, sharp enough to read.
 	 * <p>
-	 * The creator wants to see what happened, not to print it. Six hundred pixels wide at middling
-	 * quality is readable — the drop message, the item, the interface — and lands around forty
-	 * kilobytes rather than the two megabytes of the original.
+	 * It has to be readable, not merely recognisable. What catches a faked drop is usually the game's
+	 * own writing — the drop message, or a script's text sitting in the corner where the mouse tooltip
+	 * belongs — and that is the first thing to dissolve when a picture is shrunk. An earlier version of
+	 * this was six hundred pixels wide and none of that text survived.
 	 */
 	private static byte[] thumbnail(BufferedImage shot) throws IOException
 	{
-		int width = Math.min(600, shot.getWidth());
-		int height = Math.max(1, shot.getHeight() * width / Math.max(1, shot.getWidth()));
+		return encode(scale(shot, targetWidth(shot.getWidth())), QUALITY, LOWER_QUALITY);
+	}
 
-		BufferedImage small = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		Graphics2D graphics = small.createGraphics();
+	/** As wide as is worth sending, given how wide the client was. */
+	static int targetWidth(int sourceWidth)
+	{
+		// Two rules, because a single width is wrong at one end or the other. The game draws its text at
+		// a fixed pixel size no matter how big the window is, so what decides whether that text survives
+		// is how far the picture is shrunk, not what it is shrunk to: a hard 1520 would be generous to a
+		// small client and would reduce a 4K one by more than half, which is where the writing goes. So
+		// the target is 1520, unless holding to it would mean shrinking past MIN_SCALE — and never more
+		// than the client actually gave us.
+		return Math.min(sourceWidth, Math.max(MAX_WIDTH, (int) Math.round(sourceWidth * MIN_SCALE)));
+	}
+
+	/**
+	 * Shrinks by halves rather than in one jump.
+	 * <p>
+	 * One bilinear step samples four neighbouring pixels, so going straight from 1920 to 600 throws
+	 * away most of the picture and turns small writing into grey fuzz. Halving repeatedly means every
+	 * pixel of the original contributes to the result.
+	 */
+	private static BufferedImage scale(BufferedImage source, int width)
+	{
+		BufferedImage current = source;
+		int currentWidth = source.getWidth();
+		int currentHeight = source.getHeight();
+
+		while (currentWidth / 2 > width)
+		{
+			currentWidth /= 2;
+			currentHeight = Math.max(1, currentHeight / 2);
+			current = draw(current, currentWidth, currentHeight);
+		}
+
+		int height = Math.max(1, source.getHeight() * width / Math.max(1, source.getWidth()));
+		return draw(current, width, height);
+	}
+
+	private static BufferedImage draw(BufferedImage source, int width, int height)
+	{
+		// INT_RGB rather than ARGB: JPEG has no transparency, and handing an alpha channel to the JPEG
+		// writer is what produces those pictures that come back with the colours inverted.
+		BufferedImage out = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		Graphics2D graphics = out.createGraphics();
 		graphics.setRenderingHint(
-			RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-		graphics.drawImage(shot, 0, 0, width, height, null);
+			RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		graphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+		graphics.drawImage(source, 0, 0, width, height, null);
 		graphics.dispose();
+		return out;
+	}
 
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-		ImageIO.write(small, "jpg", out);
-		return out.toByteArray();
+	/**
+	 * JPEG, at the best quality that fits the budget.
+	 * <p>
+	 * ImageIO's default is around 0.75 and cannot be relied on across machines, so it is set here. The
+	 * fallback is for the unusually large client: rather than refuse to send anything, or send
+	 * something the service will reject, it drops the quality once and sends that.
+	 */
+	private static byte[] encode(BufferedImage image, float... qualities) throws IOException
+	{
+		byte[] encoded = null;
+
+		for (float quality : qualities)
+		{
+			encoded = write(image, quality);
+			if (encoded.length <= BUDGET_BYTES)
+			{
+				return encoded;
+			}
+		}
+
+		return encoded;
+	}
+
+	private static byte[] write(BufferedImage image, float quality) throws IOException
+	{
+		ImageWriter writer = ImageIO.getImageWritersByFormatName("jpg").next();
+		ImageWriteParam param = writer.getDefaultWriteParam();
+		param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+		param.setCompressionQuality(quality);
+
+		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+
+		try (ImageOutputStream stream = ImageIO.createImageOutputStream(bytes))
+		{
+			writer.setOutput(stream);
+			writer.write(null, new IIOImage(image, null, null), param);
+		}
+		finally
+		{
+			writer.dispose();
+		}
+
+		return bytes.toByteArray();
 	}
 
 	/**

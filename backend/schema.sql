@@ -88,7 +88,11 @@ CREATE INDEX IF NOT EXISTS challenges_by_creator ON challenges (creator_rsn);
 --
 -- Stored as a downscaled JPEG inline rather than in object storage. A scoring drop is a rare event —
 -- a unique or a pet, not every kill — so a week of a fifty-person clan is a few hundred images at
--- forty kilobytes. That fits here comfortably and saves running a second service.
+-- around two hundred kilobytes. That fits here comfortably and saves running a second service.
+--
+-- Two hundred rather than the forty it began at, because at forty the game's own writing could not be
+-- read, and reading it is the whole point: a clan spots a faked drop by the drop message that is not
+-- there, or by a script's text sitting where the mouse tooltip belongs.
 --
 -- The full-resolution original never leaves the player's machine; this is the readable copy.
 CREATE TABLE IF NOT EXISTS shots (

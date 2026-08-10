@@ -51,12 +51,12 @@ would rather run its own can deploy it and change the address in the plugin's se
 
 ## Honest about cheating
 
-This is trust-based, in the same way that screenshots posted to Discord are trust-based.
+This is trust based, in the same way that screenshots posted to Discord are trust based.
 
 RuneLite works out what a monster dropped by watching for items appearing as it dies, which cannot
-tell your loot from something you dropped at that moment. That affects the Loot Tracker too. The
-screenshots make it visible — a faked drop has no drop message and no collection log entry — but
-somebody determined enough to modify their client could fake either.
+tell your loot from something you dropped at that moment. That affects the Loot Tracker too. 
+
+The screenshots make it visible, a faked drop has no drop message and no collection log entry anmd will be shown in a screenshot.
 
 It is not proof. It is the same evidence a clan already asks for, gathered automatically and organised
 by challenge and by player.

@@ -153,6 +153,55 @@ public class BotwApi
 	}
 
 	/**
+	 * Puts someone on the leaderboard who will never report anything themselves.
+	 * <p>
+	 * A mobile player cannot run a plugin, so their kills cannot be counted. The clan handles them the
+	 * way it always has — screenshots, and a number entered by staff — and this is where that number
+	 * goes, so they appear on the same board as everyone else.
+	 */
+	public Result<Snapshot> addParticipant(
+		String baseUrl, String code, String creatorToken, String rsn, int points)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("rsn", rsn);
+		body.addProperty("points", points);
+
+		return send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "participants"))
+			.post(RequestBody.create(JSON, gson.toJson(body)))
+			.header("X-Creator-Token", creatorToken));
+	}
+
+	/**
+	 * Sets someone's total.
+	 * <p>
+	 * A total rather than a change, because that is how a creator thinks about it. What the service
+	 * keeps is the difference from the player's own tracked score, so their kills go on counting
+	 * underneath this.
+	 */
+	public Result<Snapshot> setPoints(
+		String baseUrl, String code, String creatorToken, String rsn, int points)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("points", points);
+
+		return send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "participants", rsn))
+			.patch(RequestBody.create(JSON, gson.toJson(body)))
+			.header("X-Creator-Token", creatorToken));
+	}
+
+	/** Takes someone off the leaderboard, for when a name was added wrong. */
+	public Result<Snapshot> removeParticipant(
+		String baseUrl, String code, String creatorToken, String rsn)
+	{
+		return send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "participants", rsn))
+			.delete()
+			.header("X-Creator-Token", creatorToken));
+	}
+
+	/**
 	 * Reports what happened. The events keep their ids, so a batch that is sent twice counts once.
 	 */
 	public Result<Snapshot> submit(

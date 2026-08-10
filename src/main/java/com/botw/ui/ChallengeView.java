@@ -8,12 +8,18 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -25,8 +31,42 @@ import net.runelite.client.ui.FontManager;
  */
 public class ChallengeView extends JPanel
 {
+	/**
+	 * What the creator may do to the leaderboard by hand. Null for everyone else, which is what makes
+	 * the controls appear only for them.
+	 * <p>
+	 * This exists because some of a clan plays on mobile, where no plugin can run and no kill can ever
+	 * be counted. Those players do what they have always done — send screenshots — and staff put the
+	 * number in, so they end up on the same board as everyone else rather than in a spreadsheet
+	 * alongside it.
+	 */
+	public interface LeaderboardEditor
+	{
+		void add(String rsn, int points);
+
+		/**
+		 * @param changes every row the creator actually altered, name to new total. Passed together
+		 *                rather than one at a time so the whole edit is one trip and one redraw; a call
+		 *                per row would race several reopens against each other.
+		 */
+		void setPoints(Map<String, Integer> changes);
+
+		void remove(String rsn);
+	}
+
 	private final ItemManager itemManager;
 	private final Runnable onBack;
+
+	/** Held so the leaderboard alone can be redrawn when edit mode is switched on and off. */
+	private final JPanel leaderboardHolder = new JPanel();
+
+	private List<LeaderboardEntry> entries = new ArrayList<>();
+	private String yourName;
+	private LeaderboardEditor editor;
+	private boolean editing;
+
+	/** The points boxes while editing, by name, so Save can tell what actually changed. */
+	private final Map<String, JTextField> pointsFields = new LinkedHashMap<>();
 
 	public ChallengeView(
 		Challenge challenge,
@@ -51,12 +91,13 @@ public class ChallengeView extends JPanel
 		JPanel evidence)
 	{
 		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, evidence,
-			null, null);
+			null, null, null);
 	}
 
 	/**
 	 * @param onEdit   offered only to the creator, and only when this client holds the token
 	 * @param onDelete same
+	 * @param editor   same again — null for a participant, which is what hides the controls
 	 */
 	public ChallengeView(
 		Challenge challenge,
@@ -68,10 +109,14 @@ public class ChallengeView extends JPanel
 		Runnable onRefresh,
 		JPanel evidence,
 		Runnable onEdit,
-		Runnable onDelete)
+		Runnable onDelete,
+		LeaderboardEditor editor)
 	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
+		this.entries = leaderboard;
+		this.yourName = yourName;
+		this.editor = editor;
 
 		setLayout(new BorderLayout());
 		setBackground(Theme.BACKGROUND);
@@ -118,7 +163,12 @@ public class ChallengeView extends JPanel
 
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Leaderboard"));
-		body.add(leaderboardList(leaderboard, yourName));
+
+		leaderboardHolder.setLayout(new BoxLayout(leaderboardHolder, BoxLayout.Y_AXIS));
+		leaderboardHolder.setBackground(Theme.BACKGROUND);
+		leaderboardHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
+		renderLeaderboard();
+		body.add(leaderboardHolder);
 
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Your points"));
@@ -260,60 +310,276 @@ public class ChallengeView extends JPanel
 		return list;
 	}
 
-	private JPanel leaderboardList(List<LeaderboardEntry> leaderboard, String yourName)
+	/** Fills {@link #leaderboardHolder}, in whichever mode it is currently in. */
+	private void renderLeaderboard()
 	{
-		JPanel list = new JPanel();
-		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-		list.setBackground(Theme.BACKGROUND);
-		list.setAlignmentX(Component.LEFT_ALIGNMENT);
+		leaderboardHolder.removeAll();
+		pointsFields.clear();
 
-		if (leaderboard.isEmpty())
+		if (editor != null)
 		{
-			list.add(Cards.muted("Nobody has scored yet."));
-			return list;
+			leaderboardHolder.add(editorControls());
+			leaderboardHolder.add(Cards.gap(4));
+		}
+
+		if (entries.isEmpty())
+		{
+			leaderboardHolder.add(Cards.muted("Nobody has scored yet."));
 		}
 
 		int place = 1;
-		for (LeaderboardEntry entry : leaderboard)
+		for (LeaderboardEntry entry : entries)
 		{
-			boolean you = entry.getRsn().equalsIgnoreCase(yourName == null ? "" : yourName);
-
-			JPanel row = new JPanel(new BorderLayout(4, 0));
-			row.setBackground(Theme.CARD);
-			row.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
-			row.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-			JLabel position = new JLabel(place++ + ".");
-			position.setFont(FontManager.getRunescapeSmallFont());
-			position.setForeground(Theme.TEXT_MUTED);
-			row.add(position, BorderLayout.WEST);
-
-			JPanel text = new JPanel();
-			text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
-			text.setBackground(row.getBackground());
-
-			JLabel name = new JLabel(entry.getRsn());
-			name.setFont(FontManager.getRunescapeBoldFont());
-			// Your own row is highlighted, because on a fifty-person leaderboard finding yourself is
-			// the first thing anyone does.
-			name.setForeground(you ? Theme.GOLD : Theme.TEXT);
-			name.setAlignmentX(Component.LEFT_ALIGNMENT);
-			text.add(name);
-
-			text.add(Cards.mutedInRow(entry.getKills() + " kills, " + entry.getDrops() + " drops"));
-			row.add(text, BorderLayout.CENTER);
-
-			JLabel points = new JLabel(String.valueOf(entry.getPoints()));
-			points.setFont(FontManager.getRunescapeBoldFont());
-			points.setForeground(Theme.GOLD);
-			row.add(points, BorderLayout.EAST);
-
-			row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
-			list.add(row);
-			list.add(Cards.gap(2));
+			leaderboardHolder.add(row(entry, place++));
+			leaderboardHolder.add(Cards.gap(2));
 		}
 
-		return list;
+		if (editing)
+		{
+			leaderboardHolder.add(Cards.gap(4));
+			leaderboardHolder.add(saveRow());
+		}
+
+		leaderboardHolder.revalidate();
+		leaderboardHolder.repaint();
+	}
+
+	private JPanel row(LeaderboardEntry entry, int place)
+	{
+		boolean you = entry.getRsn().equalsIgnoreCase(yourName == null ? "" : yourName);
+
+		JPanel row = new JPanel(new BorderLayout(4, 0));
+		row.setBackground(Theme.CARD);
+		row.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		JLabel position = new JLabel(place + ".");
+		position.setFont(FontManager.getRunescapeSmallFont());
+		position.setForeground(Theme.TEXT_MUTED);
+		row.add(position, BorderLayout.WEST);
+
+		JPanel text = new JPanel();
+		text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+		text.setBackground(row.getBackground());
+
+		JLabel name = new JLabel(entry.getRsn());
+		name.setFont(FontManager.getRunescapeBoldFont());
+		// Your own row is highlighted, because on a fifty-person leaderboard finding yourself is
+		// the first thing anyone does.
+		name.setForeground(you ? Theme.GOLD : Theme.TEXT);
+		name.setAlignmentX(Component.LEFT_ALIGNMENT);
+		text.add(name);
+
+		if (entry.isManual())
+		{
+			// Said plainly on the row. These points were typed in by staff from a screenshot, and a
+			// leaderboard that hid that would be claiming to have counted something it never saw.
+			JLabel tag = new JLabel("Manual / Mobile");
+			tag.setFont(FontManager.getRunescapeSmallFont().deriveFont(Font.ITALIC));
+			tag.setForeground(Theme.TEXT_MUTED);
+			tag.setAlignmentX(Component.LEFT_ALIGNMENT);
+			text.add(tag);
+		}
+		else
+		{
+			text.add(Cards.mutedInRow(entry.getKills() + " kills, " + entry.getDrops() + " drops"));
+		}
+
+		row.add(text, BorderLayout.CENTER);
+		row.add(editing ? pointsEditor(entry) : pointsLabel(entry), BorderLayout.EAST);
+
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+		return row;
+	}
+
+	private JLabel pointsLabel(LeaderboardEntry entry)
+	{
+		JLabel points = new JLabel(String.valueOf(entry.getPoints()));
+		points.setFont(FontManager.getRunescapeBoldFont());
+		points.setForeground(Theme.GOLD);
+		return points;
+	}
+
+	/** The points box, and an X for anyone who was added by hand. */
+	private JPanel pointsEditor(LeaderboardEntry entry)
+	{
+		JPanel side = new JPanel(new BorderLayout(2, 0));
+		side.setBackground(Theme.CARD);
+
+		JTextField field = Theme.textField(new JTextField(String.valueOf(entry.getPoints())));
+		field.setPreferredSize(new Dimension(46, 20));
+		field.setHorizontalAlignment(JTextField.RIGHT);
+		pointsFields.put(entry.getRsn(), field);
+		side.add(field, BorderLayout.CENTER);
+
+		// Only for hand-added rows. Removing someone who is playing would throw away kills their own
+		// client reported, and the way off the board for them is to leave the challenge.
+		if (entry.isManual())
+		{
+			JButton remove = Cards.button("✕");
+			remove.setPreferredSize(new Dimension(22, 20));
+			remove.setToolTipText("Remove " + entry.getRsn());
+			remove.addActionListener(event ->
+			{
+				if (confirmed("Remove " + entry.getRsn() + " from the leaderboard?"))
+				{
+					editor.remove(entry.getRsn());
+				}
+			});
+			side.add(remove, BorderLayout.EAST);
+		}
+
+		return side;
+	}
+
+	/** Add and Edit, above the board, for the creator only. */
+	private JPanel editorControls()
+	{
+		JPanel row = new JPanel(new BorderLayout(4, 0));
+		row.setBackground(Theme.BACKGROUND);
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		JButton add = Cards.button("+ Add player");
+		add.setToolTipText("Add someone who cannot run the plugin, such as a mobile player");
+		add.addActionListener(event -> promptForPlayer());
+		row.add(add, BorderLayout.CENTER);
+
+		JButton edit = Cards.button(editing ? "Cancel" : "Edit points");
+		edit.addActionListener(event ->
+		{
+			editing = !editing;
+			renderLeaderboard();
+		});
+		row.add(edit, BorderLayout.EAST);
+
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+		return row;
+	}
+
+	private JPanel saveRow()
+	{
+		JPanel row = new JPanel(new BorderLayout());
+		row.setBackground(Theme.BACKGROUND);
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		JButton save = Cards.button("Save changes");
+		save.addActionListener(event -> saveEdits());
+		row.add(save, BorderLayout.CENTER);
+
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+		return row;
+	}
+
+	/**
+	 * Sends only the rows whose number actually changed.
+	 * <p>
+	 * Saving all of them would be a request per player and would write an adjustment onto people the
+	 * creator never touched, which is exactly the kind of thing that turns up a fortnight later as
+	 * "why is everyone's score frozen".
+	 */
+	private void saveEdits()
+	{
+		Map<String, Integer> changes = new LinkedHashMap<>();
+
+		for (LeaderboardEntry entry : entries)
+		{
+			JTextField field = pointsFields.get(entry.getRsn());
+			if (field == null)
+			{
+				continue;
+			}
+
+			Integer wanted = parsePoints(field.getText());
+			if (wanted == null)
+			{
+				// Nothing is sent when one box is wrong. Saving the good rows and stopping at the bad
+				// one would leave the creator guessing which half went through.
+				Cards.warn(this, "\"" + field.getText().trim() + "\" is not a number of points.");
+				return;
+			}
+
+			if (wanted != entry.getPoints())
+			{
+				changes.put(entry.getRsn(), wanted);
+			}
+		}
+
+		editing = false;
+
+		if (changes.isEmpty())
+		{
+			// Nobody was changed, so nothing is sent — but the board still has to come out of edit mode,
+			// which the reopen would otherwise have done.
+			renderLeaderboard();
+			return;
+		}
+
+		editor.setPoints(changes);
+	}
+
+	/** Null when it is not a whole number. Negatives are allowed: docking points is a real thing. */
+	static Integer parsePoints(String text)
+	{
+		try
+		{
+			return Integer.valueOf(text.trim());
+		}
+		catch (NumberFormatException e)
+		{
+			return null;
+		}
+	}
+
+	/**
+	 * The name box for adding someone by hand, with their points alongside it — staff are entering
+	 * both off the same screenshot, and asking for the name first and the score afterwards would be
+	 * two dialogs for one thought.
+	 */
+	private void promptForPlayer()
+	{
+		JPanel form = new JPanel();
+		form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+
+		JTextField name = new JTextField(14);
+		JTextField points = new JTextField("0", 14);
+
+		form.add(new JLabel("RuneScape name"));
+		form.add(name);
+		form.add(new JLabel(" "));
+		form.add(new JLabel("Points"));
+		form.add(points);
+
+		SwingUtilities.invokeLater(name::requestFocusInWindow);
+
+		int choice = JOptionPane.showConfirmDialog(
+			this, form, "Add a player", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+		if (choice != JOptionPane.OK_OPTION)
+		{
+			return;
+		}
+
+		String rsn = name.getText().trim();
+		if (rsn.isEmpty())
+		{
+			Cards.warn(this, "A name is needed.");
+			return;
+		}
+
+		Integer starting = parsePoints(points.getText());
+		if (starting == null)
+		{
+			Cards.warn(this, "\"" + points.getText().trim() + "\" is not a number of points.");
+			return;
+		}
+
+		editor.add(rsn, starting);
+	}
+
+	private boolean confirmed(String question)
+	{
+		return JOptionPane.showConfirmDialog(
+			this, question, "Boss of the Week", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
 	}
 
 	/**

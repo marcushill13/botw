@@ -12,6 +12,7 @@ import java.awt.Component;
 import java.awt.Dimension;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.function.Supplier;
 import javax.inject.Inject;
@@ -576,9 +577,84 @@ public class BotwPanel extends PluginPanel
 					() -> openChallenge(code),
 					evidence,
 					creatorToken == null ? null : () -> showEdit(open),
-					creatorToken == null ? null : () -> delete(code)));
+					creatorToken == null ? null : () -> delete(code),
+					creatorToken == null ? null : leaderboardEditor(code, creatorToken)));
 			});
 		});
+	}
+
+	/**
+	 * The creator's three edits to the leaderboard, each of which reopens the challenge on the way back
+	 * so the board they are looking at is the one the service now holds rather than the one they were
+	 * looking at a moment ago.
+	 */
+	private ChallengeView.LeaderboardEditor leaderboardEditor(String code, String creatorToken)
+	{
+		return new ChallengeView.LeaderboardEditor()
+		{
+			@Override
+			public void add(String rsn, int points)
+			{
+				run("Adding " + rsn + "…",
+					() -> api.addParticipant(config.serverUrl(), code, creatorToken, rsn, points));
+			}
+
+			@Override
+			public void setPoints(Map<String, Integer> changes)
+			{
+				// One request per changed player, run in order on the one thread. The service has no
+				// endpoint that takes several at once, and firing them off in parallel would race each
+				// other's recomputation of the same leaderboard.
+				run("Saving…", () ->
+				{
+					BotwApi.Result<BotwApi.Snapshot> result = null;
+
+					for (Map.Entry<String, Integer> change : changes.entrySet())
+					{
+						result = api.setPoints(
+							config.serverUrl(), code, creatorToken, change.getKey(), change.getValue());
+
+						// Stopped at the first refusal, so the creator is told which name failed rather
+						// than being shown the last one's error for all of them.
+						if (!result.ok())
+						{
+							break;
+						}
+					}
+
+					return result;
+				});
+			}
+
+			@Override
+			public void remove(String rsn)
+			{
+				run("Removing " + rsn + "…",
+					() -> api.removeParticipant(config.serverUrl(), code, creatorToken, rsn));
+			}
+
+			private void run(String message, Supplier<BotwApi.Result<BotwApi.Snapshot>> call)
+			{
+				busy(message);
+				executor.execute(() ->
+				{
+					BotwApi.Result<BotwApi.Snapshot> result = call.get();
+
+					SwingUtilities.invokeLater(() ->
+					{
+						// Null only if there was nothing to send, which the caller already rules out.
+						if (result != null && !result.ok())
+						{
+							Cards.warn(BotwPanel.this, result.getError());
+						}
+
+						// Reopened either way. After a failure the board on screen is still right, and
+						// after a success it is the only way to see the new one.
+						openChallenge(code);
+					});
+				});
+			}
+		};
 	}
 
 	private void busy(String message)

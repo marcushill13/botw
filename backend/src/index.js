@@ -131,6 +131,25 @@ async function route(request, env)
 		return withCors(await readShot(shot[1].toUpperCase(), decodeURIComponent(shot[2]), request, env));
 	}
 
+	const participants = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/participants$/);
+	if (participants && request.method === 'POST')
+	{
+		return withCors(await addParticipant(participants[1].toUpperCase(), request, env));
+	}
+
+	const participant = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/participants\/([^/]+)$/);
+	if (participant && request.method === 'PATCH')
+	{
+		return withCors(await setParticipantPoints(
+			participant[1].toUpperCase(), decodeURIComponent(participant[2]), request, env));
+	}
+
+	if (participant && request.method === 'DELETE')
+	{
+		return withCors(await removeParticipant(
+			participant[1].toUpperCase(), decodeURIComponent(participant[2]), request, env));
+	}
+
 	const mine = path.match(/^\/v1\/creators\/([^/]+)\/challenges$/);
 	if (mine && request.method === 'GET')
 	{
@@ -290,7 +309,7 @@ async function joinChallenge(code, request, env)
 	}
 
 	const existing = await env.DB.prepare(
-		'SELECT token FROM participants WHERE challenge_code = ? AND rsn = ?')
+		'SELECT token, manual FROM participants WHERE challenge_code = ? AND rsn = ?')
 		.bind(code, rsn)
 		.first();
 
@@ -301,6 +320,17 @@ async function joinChallenge(code, request, env)
 		await env.DB.prepare(
 			'INSERT INTO participants (challenge_code, rsn, token, joined_at) VALUES (?, ?, ?, ?)')
 			.bind(code, rsn, token, Date.now())
+			.run();
+	}
+	else if (existing.manual === 1)
+	{
+		// Someone entered by hand has now joined from a client of their own — a mobile player on a
+		// desktop, or staff who added them before they got round to it. From here their kills count
+		// themselves, so the "Manual" tag comes off. Whatever the creator gave them stays as an
+		// adjustment, because those points were for kills that happened and were never tracked.
+		await env.DB.prepare(
+			'UPDATE participants SET manual = 0 WHERE challenge_code = ? AND rsn = ?')
+			.bind(code, rsn)
 			.run();
 	}
 
@@ -501,6 +531,147 @@ async function readShot(code, eventId, request, env)
 }
 
 /**
+ * Adds someone the plugin will never hear from.
+ *
+ * A mobile player cannot run a RuneLite plugin, so their kills cannot be counted and never will be.
+ * The clan's answer is the one it already had — they send screenshots and staff enter the number —
+ * and this is where that number goes, so those players appear on the same leaderboard as everyone
+ * else instead of on a spreadsheet beside it.
+ *
+ * They get a token like anyone else, which is simply never handed out. It costs nothing, keeps the
+ * row the same shape as a real participant's, and means that if they ever do join from a desktop the
+ * ordinary join path finds them and takes them over.
+ */
+async function addParticipant(code, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can add players' }, 403);
+	}
+
+	const body = await readJson(request);
+	const rsn = String(body?.rsn ?? '').trim();
+	if (!rsn)
+	{
+		return json({ error: 'A name is required' }, 400);
+	}
+
+	const existing = await env.DB.prepare(
+		'SELECT rsn FROM participants WHERE challenge_code = ? AND rsn = ?')
+		.bind(code, rsn)
+		.first();
+
+	if (existing)
+	{
+		return json({ error: `${rsn} is already on this leaderboard` }, 409);
+	}
+
+	const points = Number.isFinite(body?.points) ? Math.trunc(body.points) : 0;
+
+	await env.DB.prepare(
+		`INSERT INTO participants (challenge_code, rsn, token, joined_at, points, adjustment, manual)
+		 VALUES (?, ?, ?, ?, ?, ?, 1)`)
+		.bind(code, rsn, randomToken(), Date.now(), points, points)
+		.run();
+
+	return json({
+		challenge: publicChallenge(challenge),
+		leaderboard: await leaderboardFor(code, env)
+	});
+}
+
+/**
+ * Sets what someone is on, whatever they got there by.
+ *
+ * The creator types a total, not a difference — "put them on 40" is the thought, and asking for the
+ * change instead would mean doing the subtraction in their head. The subtraction happens here: what
+ * is stored is the gap between that total and what the player's own kills come to, so their tracked
+ * points keep accruing underneath and the creator's correction rides on top of them.
+ */
+async function setParticipantPoints(code, rsn, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can change points' }, 403);
+	}
+
+	const existing = await env.DB.prepare(
+		'SELECT rsn FROM participants WHERE challenge_code = ? AND rsn = ?')
+		.bind(code, rsn)
+		.first();
+
+	if (!existing)
+	{
+		return json({ error: 'Nobody by that name is on this leaderboard' }, 404);
+	}
+
+	const body = await readJson(request);
+	if (!Number.isFinite(body?.points))
+	{
+		return json({ error: 'A points total is required' }, 400);
+	}
+
+	const wanted = Math.trunc(body.points);
+	const tracked = await trackedPoints(code, existing.rsn, env, challenge);
+
+	await env.DB.prepare(
+		'UPDATE participants SET adjustment = ?, points = ? WHERE challenge_code = ? AND rsn = ?')
+		.bind(wanted - tracked, wanted, code, existing.rsn)
+		.run();
+
+	return json({
+		challenge: publicChallenge(challenge),
+		leaderboard: await leaderboardFor(code, env)
+	});
+}
+
+/**
+ * Takes someone off the leaderboard.
+ *
+ * Here because adding a name by hand means eventually adding it wrong, and a typo that cannot be
+ * removed would sit at the bottom of the board for the whole competition.
+ *
+ * Their events go too. A player who is removed and then rejoins from their own client starts again,
+ * which is the honest reading of having been removed.
+ */
+async function removeParticipant(code, rsn, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge)
+	{
+		return json({ error: 'No challenge with that code' }, 404);
+	}
+
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+	{
+		return json({ error: 'Only the creator can remove players' }, 403);
+	}
+
+	await env.DB.batch([
+		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
+		env.DB.prepare('DELETE FROM events WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
+		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ? AND rsn = ?').bind(code, rsn)
+	]);
+
+	return json({
+		challenge: publicChallenge(challenge),
+		leaderboard: await leaderboardFor(code, env)
+	});
+}
+
+/**
  * Deletes the screenshots belonging to challenges that finished more than {@link SHOT_RETENTION_DAYS}
  * ago, and nothing else.
  *
@@ -621,14 +792,15 @@ async function recomputePoints(code, env)
 async function leaderboardFor(code, env)
 {
 	const rows = await env.DB.prepare(
-		`SELECT rsn, points, kills, drops
+		`SELECT rsn, points, kills, drops, adjustment, manual
 		   FROM participants
 		  WHERE challenge_code = ?
 		  ORDER BY points DESC, kills DESC, rsn ASC`)
 		.bind(code)
 		.all();
 
-	return rows.results ?? [];
+	// SQLite has no booleans, and the plugin should not have to know that.
+	return (rows.results ?? []).map(row => ({ ...row, manual: row.manual === 1 }));
 }
 
 /**
@@ -654,10 +826,40 @@ async function refreshTotals(code, rsn, env, challenge = null)
 		? Math.trunc(kills / rules.kc_per) * rules.kc_points
 		: 0;
 
+	// The creator's adjustment is added back on every rebuild rather than being overwritten by it.
+	// Without this line an edited total would last only until that player's next kill.
 	await env.DB.prepare(
-		'UPDATE participants SET points = ?, kills = ?, drops = ? WHERE challenge_code = ? AND rsn = ?')
+		`UPDATE participants
+		    SET points = ? + adjustment, kills = ?, drops = ?
+		  WHERE challenge_code = ? AND rsn = ?`)
 		.bind(killPoints + (totals?.dropPoints ?? 0), kills, totals?.drops ?? 0, code, rsn)
 		.run();
+}
+
+/**
+ * What a participant scores from their own kills, with nothing added by hand.
+ *
+ * Wanted whenever an adjustment has to be worked out: the creator types a total, and the difference
+ * between that total and this is what gets stored.
+ */
+async function trackedPoints(code, rsn, env, challenge = null)
+{
+	const rules = challenge ?? await loadChallenge(code, env);
+
+	const totals = await env.DB.prepare(
+		`SELECT COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kills,
+		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN points ELSE 0 END), 0) AS dropPoints
+		   FROM events
+		  WHERE challenge_code = ? AND rsn = ?`)
+		.bind(code, rsn)
+		.first();
+
+	const kills = totals?.kills ?? 0;
+	const killPoints = rules.kc_per > 0
+		? Math.trunc(kills / rules.kc_per) * rules.kc_points
+		: 0;
+
+	return killPoints + (totals?.dropPoints ?? 0);
 }
 
 /**
@@ -675,9 +877,19 @@ async function scoreFor(code, rsn, env)
 		.all();
 
 	const events = rows.results ?? [];
+
+	// Taken from the participant row rather than summed from the events, because the events are only
+	// half the story once a creator has been at it. Someone who sees "40" on the leaderboard and a
+	// breakdown adding to 30 would reasonably think one of them was broken.
+	const row = await env.DB.prepare(
+		'SELECT points, adjustment FROM participants WHERE challenge_code = ? AND rsn = ?')
+		.bind(code, rsn)
+		.first();
+
 	return {
 		rsn,
-		points: events.reduce((total, event) => total + event.points, 0),
+		points: row?.points ?? events.reduce((total, event) => total + event.points, 0),
+		adjustment: row?.adjustment ?? 0,
 		events
 	};
 }

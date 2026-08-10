@@ -49,6 +49,23 @@ CREATE TABLE IF NOT EXISTS participants (
 	kills          INTEGER NOT NULL DEFAULT 0,
 	drops          INTEGER NOT NULL DEFAULT 0,
 
+	-- What the creator has added or taken away by hand, kept apart from the tracked points rather than
+	-- folded into them.
+	--
+	-- It has to be a column of its own because `points` is rebuilt from the events every time anything
+	-- is written. Editing that directly would look right until the player's next kill, which would
+	-- recompute the total and silently undo the creator. Stored as the difference, so `points` is
+	-- always the tracked score plus this, and both halves keep working: a mobile player has no events
+	-- and so is entirely this, and a tracked player given a bonus keeps counting kills underneath it.
+	adjustment     INTEGER NOT NULL DEFAULT 0,
+
+	-- Added by the creator rather than having joined from a plugin — a mobile player, whose kills
+	-- nobody can see. Shown on the leaderboard, because a total that arrived by hand should not be
+	-- passed off as one that was counted.
+	--
+	-- Cleared if they ever do join properly, which happens by itself when they enter the code.
+	manual         INTEGER NOT NULL DEFAULT 0,
+
 	PRIMARY KEY (challenge_code, rsn)
 );
 

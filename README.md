@@ -18,6 +18,17 @@ remember.
 
 Joining is that code and a button.
 
+## Players who cannot run the plugin
+
+Mobile has no plugins, so those kills can never be counted. They do not have to sit the competition
+out: the creator can add someone to the leaderboard by hand and set their points from the screenshots
+they send in, the way the clan already does it. Those rows are marked *Manual / Mobile*, so a total
+that was typed in is never passed off as one that was counted.
+
+The same edit works on everyone else, for docking points or fixing a mistake. A tracked player's own
+kills keep counting underneath it — the change is kept alongside their score rather than replacing
+it, so it does not come undone at their next kill.
+
 ## What you see
 
 A countdown to the start, which becomes a countdown to the end. The boss, the full points list, and a

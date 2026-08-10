@@ -43,6 +43,11 @@ this is what the clan would otherwise be asking you to post in Discord. Only the
 other participants cannot. The full-size original never leaves your machine. Both behaviours have
 their own setting and can be turned off.
 
+**Screenshots are not kept for ever.** The shared copies are deleted a month after a challenge ends,
+and deleting a challenge removes them straight away. Results are kept — an old leaderboard can still
+be looked up — so it is only the pictures that expire, and the creator can export them as a zip at
+any point before then.
+
 **Points are worked out on the server**, not here. The plugin reports that a pet dropped; what a pet
 is worth is the challenge's business.
 

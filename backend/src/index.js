@@ -30,7 +30,32 @@ const MAX_EVENTS_PER_REQUEST = 50;
 /** About 700KB of base64, which is far more than a downscaled screenshot needs. */
 const MAX_IMAGE_CHARS = 900000;
 
+/**
+ * How long a challenge's screenshots are kept after it finishes.
+ *
+ * Only the pictures expire. The results — who joined, what they killed, what they scored — are a few
+ * hundred bytes a head and are kept for good, so a clan can still look up who won a competition from
+ * two years ago. The screenshots are the only part large enough to matter, and they are evidence for
+ * an argument, which is a thing with a short life: a month after a week-long competition is long past
+ * anyone disputing it, and the creator can export a zip at any point before then.
+ *
+ * Without this the service only ever grows, because a challenge nobody bothers to delete keeps its
+ * pictures for ever.
+ */
+const SHOT_RETENTION_DAYS = 30;
+
 export default {
+	/**
+	 * Clears out expired screenshots, once a day.
+	 *
+	 * Keyed on when the challenge ended rather than when each picture was taken, so a long competition
+	 * never has its early evidence deleted while it is still being played.
+	 */
+	async scheduled(event, env, ctx)
+	{
+		ctx.waitUntil(pruneShots(env));
+	},
+
 	async fetch(request, env)
 	{
 		try
@@ -473,6 +498,33 @@ async function readShot(code, eventId, request, env)
 	}
 
 	return json(row);
+}
+
+/**
+ * Deletes the screenshots belonging to challenges that finished more than {@link SHOT_RETENTION_DAYS}
+ * ago, and nothing else.
+ *
+ * The challenge itself, its participants and its events all stay. Someone looking up an old
+ * competition still sees the full leaderboard; what they no longer get is the pictures.
+ *
+ * Deleting a challenge from the plugin already takes its screenshots with it, by way of the foreign
+ * key. This is for the ones nobody ever gets round to deleting.
+ */
+async function pruneShots(env)
+{
+	const cutoff = Date.now() - SHOT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+
+	const result = await env.DB.prepare(
+		`DELETE FROM shots
+		 WHERE challenge_code IN (SELECT code FROM challenges WHERE ends_at < ?)`)
+		.bind(cutoff)
+		.run();
+
+	// Worth logging: it is the only way to see this ran, and the only warning if it ever starts
+	// removing far more than expected.
+	console.log(`Pruned ${result.meta?.changes ?? 0} screenshots from challenges ended before ${new Date(cutoff).toISOString()}`);
+
+	return result.meta?.changes ?? 0;
 }
 
 async function participantFor(code, request, env)

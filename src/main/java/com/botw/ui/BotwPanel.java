@@ -262,7 +262,22 @@ public class BotwPanel extends PluginPanel
 		text.add(Cards.mutedInRow(Countdown.describe(challenge, System.currentTimeMillis())));
 
 		// Which side of the challenge this account is on, said on the card rather than only inside.
-		JLabel tag = new JLabel(membership.isCreator() ? "CREATOR" : "PARTICIPANT");
+		// Being both is normal now: you make a challenge, then join it on the account you play.
+		String role;
+		if (membership.isCreator() && membership.isParticipant())
+		{
+			role = "CREATOR · JOINED";
+		}
+		else if (membership.isCreator())
+		{
+			role = "CREATOR · NOT JOINED";
+		}
+		else
+		{
+			role = "PARTICIPANT";
+		}
+
+		JLabel tag = new JLabel(role);
 		tag.setFont(Theme.body());
 		tag.setForeground(membership.isCreator() ? Theme.GOLD : Theme.TEXT_MUTED);
 		tag.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -308,18 +323,10 @@ public class BotwPanel extends PluginPanel
 
 				BotwApi.Snapshot snapshot = result.getValue();
 
-				// A creator competes too, so both tokens are kept. Without the participant token their
-				// own kills would go nowhere.
-				challenges.put(
-					snapshot.getChallenge(),
-					snapshot.getCreatorToken(),
-					snapshot.getParticipantToken());
-
-				// The service does not hand back a participant token on create, so join immediately.
-				if (snapshot.getParticipantToken() == null)
-				{
-					executor.execute(() -> joinQuietly(snapshot.getChallenge().getCode(), rsn));
-				}
+				// Only the creator token. Making a challenge and competing in it are separate things,
+				// and joining is what a client needs to report kills — so the creator joins with the
+				// code like everybody else, on whichever account they are actually playing.
+				challenges.put(snapshot.getChallenge(), snapshot.getCreatorToken(), null);
 
 				openChallenge(snapshot.getChallenge().getCode());
 			});
@@ -362,18 +369,6 @@ public class BotwPanel extends PluginPanel
 		});
 	}
 
-	/** Joining the challenge you just made, without another screen about it. */
-	private void joinQuietly(String code, String rsn)
-	{
-		BotwApi.Result<BotwApi.Snapshot> result = api.join(config.serverUrl(), code, rsn);
-		if (result.ok())
-		{
-			SwingUtilities.invokeLater(() ->
-				challenges.put(result.getValue().getChallenge(), null,
-					result.getValue().getParticipantToken()));
-		}
-	}
-
 	private void openChallenge(String code)
 	{
 		busy("Loading…");
@@ -411,7 +406,7 @@ public class BotwPanel extends PluginPanel
 				JPanel evidence = creatorToken == null
 					? null
 					: new EvidencePanel(code, snapshot.getChallenge().getName(), creatorToken,
-						config.serverUrl(), api, executor);
+						config.serverUrl(), api, executor, snapshot.getLeaderboard());
 
 				show(new ChallengeView(
 					snapshot.getChallenge(),

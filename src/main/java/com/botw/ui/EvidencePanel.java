@@ -59,13 +59,19 @@ public class EvidencePanel extends JPanel
 	private final Map<String, List<BotwApi.Shot>> byParticipant = new LinkedHashMap<>();
 	private final java.util.Set<String> open = new java.util.HashSet<>();
 
+	/**
+	 * @param participants everyone who has joined, so each gets a folder whether or not they have
+	 *                     anything in it yet. A folder that only appears once someone scores looks like
+	 *                     a missing feature rather than an empty one.
+	 */
 	public EvidencePanel(
 		String challengeCode,
 		String challengeName,
 		String creatorToken,
 		String serverUrl,
 		BotwApi api,
-		ScheduledExecutorService executor)
+		ScheduledExecutorService executor,
+		List<com.botw.data.LeaderboardEntry> participants)
 	{
 		this.challengeCode = challengeCode;
 		this.challengeName = challengeName;
@@ -73,6 +79,12 @@ public class EvidencePanel extends JPanel
 		this.serverUrl = serverUrl;
 		this.api = api;
 		this.executor = executor;
+
+		// Seeded empty so every participant has a folder from the moment they join.
+		for (com.botw.data.LeaderboardEntry entry : participants)
+		{
+			byParticipant.put(entry.getRsn(), new ArrayList<>());
+		}
 
 		setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 		setBackground(Theme.BACKGROUND);
@@ -101,7 +113,12 @@ public class EvidencePanel extends JPanel
 					return;
 				}
 
-				byParticipant.clear();
+				// The seeded folders stay; the shots fill them in.
+				for (List<BotwApi.Shot> shots : byParticipant.values())
+				{
+					shots.clear();
+				}
+
 				for (BotwApi.Shot shot : result.getValue())
 				{
 					byParticipant.computeIfAbsent(shot.getRsn(), rsn -> new ArrayList<>()).add(shot);
@@ -118,7 +135,7 @@ public class EvidencePanel extends JPanel
 
 		if (byParticipant.isEmpty())
 		{
-			add(muted("No drops have been recorded yet. Screenshots arrive as people get them."));
+			add(muted("Nobody has joined yet. Share the code and their folders will appear here."));
 		}
 
 		for (Map.Entry<String, List<BotwApi.Shot>> entry : byParticipant.entrySet())
@@ -152,7 +169,9 @@ public class EvidencePanel extends JPanel
 		name.setForeground(Theme.GOLD);
 		header.add(name, BorderLayout.CENTER);
 
-		JLabel count = new JLabel(shots.size() + (shots.size() == 1 ? " drop" : " drops"));
+		JLabel count = new JLabel(shots.isEmpty()
+			? "none yet"
+			: shots.size() + (shots.size() == 1 ? " drop" : " drops"));
 		count.setFont(Theme.body());
 		count.setForeground(Theme.TEXT_MUTED);
 		header.add(count, BorderLayout.EAST);
@@ -180,14 +199,23 @@ public class EvidencePanel extends JPanel
 
 		if (opened)
 		{
+			if (shots.isEmpty())
+			{
+				wrapper.add(Cards.gap(2));
+				wrapper.add(muted("No screenshots yet."));
+			}
+
 			for (BotwApi.Shot shot : shots)
 			{
 				wrapper.add(Cards.gap(2));
 				wrapper.add(shotRow(shot));
 			}
 
-			wrapper.add(Cards.gap(4));
-			wrapper.add(exportButton(rsn, shots));
+			if (!shots.isEmpty())
+			{
+				wrapper.add(Cards.gap(4));
+				wrapper.add(exportButton(rsn, shots));
+			}
 		}
 
 		return wrapper;

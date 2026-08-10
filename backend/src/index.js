@@ -143,11 +143,10 @@ async function createChallenge(request, env)
 			now)
 		.run();
 
-	// The creator is a participant too; nobody runs an event they cannot compete in.
-	await env.DB.prepare(
-		'INSERT OR IGNORE INTO participants (challenge_code, rsn, token, joined_at) VALUES (?, ?, ?, ?)')
-		.bind(code, body.creatorRsn.trim(), randomToken(), now)
-		.run();
+	// The creator is not entered automatically. Running a challenge and competing in it are separate
+	// things: someone may be organising it for other people, and joining is how a client gets the token
+	// it needs to report kills — so it has to be a deliberate act rather than something done on their
+	// behalf on a machine that may not even be the one they play on.
 
 	const challenge = await loadChallenge(code, env);
 	return json({ code, creatorToken, challenge: publicChallenge(challenge), leaderboard: [] }, 201);

@@ -16,6 +16,7 @@ import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.loottracker.LootReceived;
+import net.runelite.http.api.loottracker.LootRecordType;
 
 /**
  * Watches for kills of whichever boss the joined challenges are about.
@@ -26,6 +27,11 @@ import net.runelite.client.plugins.loottracker.LootReceived;
  * instead — raids, Tombs of Amascut, the Nightmare — where nothing ever dies at your feet. Listening
  * only to the first would silently ignore a raid; only to the second would require the Loot Tracker
  * plugin to be enabled, and would miss the plain cases if it were not.
+ * <p>
+ * The two overlap, and that overlap has to be cut out. The Loot Tracker takes every
+ * {@link NpcLootReceived} and re-announces it as a {@link LootReceived} of type
+ * {@link LootRecordType#NPC}, so an ordinary boss arrives here twice and would be counted twice. See
+ * {@link #countsAsKill}.
  * <p>
  * Nothing is scored here. This decides what happened and hands it to the outbox; what it is worth is
  * the service's decision, and deliberately not the client's.
@@ -70,13 +76,30 @@ public class KillTracker
 	@Subscribe
 	public void onLootReceived(LootReceived event)
 	{
-		if (event.getName() == null)
+		if (event.getName() == null || !countsAsKill(event.getType()))
 		{
 			return;
 		}
 
 		// A chest can pay out for several kills at once; the amount says how many.
 		record(event.getName(), event.getItems(), Math.max(1, event.getAmount()));
+	}
+
+	/**
+	 * Whether a {@link LootReceived} is a kill in its own right, or one already counted elsewhere.
+	 * <p>
+	 * Only {@link LootRecordType#EVENT} is. That is the chest payouts — raids, Tombs of Amascut — which
+	 * are the reason this event is listened to at all.
+	 * <p>
+	 * {@link LootRecordType#NPC} is deliberately refused. The Loot Tracker re-announces every
+	 * {@link NpcLootReceived} under this event as well, so accepting it would count every ordinary boss
+	 * twice over for anyone with that plugin switched on, which is nearly everyone. The first listener
+	 * has already had that kill. {@link LootRecordType#PLAYER} and {@link LootRecordType#PICKPOCKET} are
+	 * refused because killing someone in the Wilderness or robbing them is not a boss kill.
+	 */
+	static boolean countsAsKill(LootRecordType type)
+	{
+		return type == LootRecordType.EVENT;
 	}
 
 	private void record(String source, Collection<ItemStack> items)
@@ -153,7 +176,7 @@ public class KillTracker
 	 * Rex" while the game may hand back a form or a level suffix, and Tombs of Amascut pays out under
 	 * the raid's name rather than the boss's.
 	 */
-	private static boolean matches(String boss, String source)
+	static boolean matches(String boss, String source)
 	{
 		if (boss == null || source == null)
 		{

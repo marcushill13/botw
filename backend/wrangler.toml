@@ -2,8 +2,8 @@ name = "botw"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# The database is created by `wrangler d1 create botw`, which prints the id to paste in here.
+# Created with `wrangler d1 create botw`. The id comes from `wrangler d1 list` if it is ever lost.
 [[d1_databases]]
 binding = "DB"
 database_name = "botw"
-database_id = "paste-the-id-wrangler-prints-here"
+database_id = "804be076-0326-40bf-84bd-a24f958ac48d"

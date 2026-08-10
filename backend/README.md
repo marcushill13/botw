@@ -31,8 +31,7 @@ cd backend && wrangler d1 execute botw --remote --file=./schema.sql
 cd backend && wrangler deploy
 ```
 
-`wrangler deploy` prints the URL it published to. That URL goes into the plugin's settings so it knows
-where to talk to.
+Deployed at **https://botw.marcushill3313.workers.dev** — that is the URL the plugin talks to.
 
 ## What it does
 

@@ -21,7 +21,6 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JToggleButton;
 import javax.swing.SwingConstants;
-import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -43,7 +42,7 @@ final class Cards
 	 * Secondary text. RuneLite's MEDIUM_GRAY_COLOR on the panel background is grey-on-grey and was
 	 * reported as hard to read; this keeps the hierarchy while staying legible.
 	 */
-	private static final Color MUTED_TEXT = new Color(170, 170, 170);
+	private static final Color MUTED_TEXT = Theme.TEXT_MUTED;
 
 	/**
 	 * Rows sit inside a scroll pane, and a trailing value would otherwise be clipped by the scrollbar.
@@ -61,7 +60,7 @@ final class Cards
 	{
 		JPanel card = new JPanel();
 		card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		card.setBackground(Theme.CARD);
 		card.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		card.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return card;
@@ -73,7 +72,7 @@ final class Cards
 	static JPanel accentCard(Color accent)
 	{
 		JPanel wrapper = new JPanel(new BorderLayout());
-		wrapper.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		wrapper.setBackground(Theme.CARD);
 		wrapper.setBorder(BorderFactory.createMatteBorder(0, ACCENT, 0, 0, accent));
 		wrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return wrapper;
@@ -99,7 +98,7 @@ final class Cards
 	{
 		JLabel label = new JLabel(text);
 		label.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 16f));
-		label.setForeground(ColorScheme.BRAND_ORANGE);
+		label.setForeground(Theme.GOLD);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
 	}
@@ -111,7 +110,7 @@ final class Cards
 	{
 		JLabel label = new JLabel(text);
 		label.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 13f));
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setForeground(Theme.TEXT);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
 	}
@@ -124,7 +123,7 @@ final class Cards
 	{
 		JPanel inner = new JPanel();
 		inner.setLayout(new BoxLayout(inner, BoxLayout.Y_AXIS));
-		inner.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		inner.setBackground(Theme.CARD);
 		inner.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 
 		JLabel label = new JLabel("<html><body style='width:140px'>" + escape(text) + "</body></html>");
@@ -134,7 +133,7 @@ final class Cards
 		inner.add(label);
 
 		JPanel card = new JPanel(new BorderLayout());
-		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		card.setBackground(Theme.CARD);
 		card.setBorder(BorderFactory.createMatteBorder(0, ACCENT, 0, 0, WARNING_COLOR));
 		card.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(inner, BorderLayout.CENTER);
@@ -164,7 +163,7 @@ final class Cards
 	{
 		JLabel label = new JLabel(text);
 		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setForeground(Theme.TEXT);
 		label.setAlignmentX(Component.LEFT_ALIGNMENT);
 		return label;
 	}
@@ -202,7 +201,7 @@ final class Cards
 	{
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		panel.setBackground(Theme.BACKGROUND);
 		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		JLabel caption = sectionLabel(label);
@@ -236,8 +235,11 @@ final class Cards
 	{
 		JButton button = new JButton(text);
 		button.setFont(FontManager.getRunescapeSmallFont());
-		button.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		button.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		button.setForeground(Theme.TEXT);
+		button.setBackground(Theme.CARD);
+		button.setFocusPainted(false);
+		button.setBorderPainted(false);
+		button.setOpaque(true);
 		// Tight horizontal padding: at 225px, three buttons in a row have barely 60px each, and
 		// generous padding is what truncated "Off task" into "Off...".
 		button.setBorder(BorderFactory.createEmptyBorder(4, 3, 4, 3));
@@ -260,7 +262,7 @@ final class Cards
 	{
 		JPanel section = new JPanel();
 		section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
-		section.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		section.setBackground(Theme.BACKGROUND);
 		section.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		JButton header = button(title + "   +");
@@ -297,8 +299,8 @@ final class Cards
 	{
 		JComboBox<T> combo = new JComboBox<>(items);
 		combo.setFont(FontManager.getRunescapeSmallFont());
-		combo.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		combo.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		combo.setBackground(Theme.CARD);
+		combo.setForeground(Theme.TEXT);
 		combo.setFocusable(false);
 		combo.setBorder(BorderFactory.createEmptyBorder(2, 4, 2, 4));
 		combo.setRenderer(new DarkListRenderer());
@@ -315,7 +317,7 @@ final class Cards
 	static JPanel segmented(String[] labels, int selectedIndex, IntConsumer onSelect)
 	{
 		JPanel row = new JPanel(new GridLayout(1, labels.length, 4, 0));
-		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setBackground(Theme.BACKGROUND);
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 
@@ -350,11 +352,11 @@ final class Cards
 	private static void paintToggle(JToggleButton option)
 	{
 		option.setBackground(option.isSelected()
-			? ColorScheme.BRAND_ORANGE
-			: ColorScheme.DARKER_GRAY_COLOR);
+			? Theme.GOLD
+			: Theme.CARD);
 		option.setForeground(option.isSelected()
-			? ColorScheme.DARKER_GRAY_COLOR
-			: ColorScheme.LIGHT_GRAY_COLOR);
+			? Theme.CARD
+			: Theme.TEXT);
 	}
 
 	/**
@@ -369,8 +371,8 @@ final class Cards
 			super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
 
 			setFont(FontManager.getRunescapeSmallFont());
-			setBackground(isSelected ? ColorScheme.BRAND_ORANGE : ColorScheme.DARKER_GRAY_COLOR);
-			setForeground(isSelected ? ColorScheme.DARKER_GRAY_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+			setBackground(isSelected ? Theme.GOLD : Theme.CARD);
+			setForeground(isSelected ? Theme.CARD : Theme.TEXT);
 			setBorder(BorderFactory.createEmptyBorder(3, 5, 3, 5));
 			return this;
 		}

@@ -15,7 +15,6 @@ import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -42,11 +41,11 @@ public class ChallengeView extends JPanel
 		this.onBack = onBack;
 
 		setLayout(new BorderLayout());
-		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setBackground(Theme.BACKGROUND);
 
 		JPanel body = new JPanel();
 		body.setLayout(new BoxLayout(body, BoxLayout.Y_AXIS));
-		body.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		body.setBackground(Theme.BACKGROUND);
 		body.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
 		body.add(backRow(onRefresh));
@@ -61,7 +60,9 @@ public class ChallengeView extends JPanel
 		long now = System.currentTimeMillis();
 		JLabel countdown = new JLabel(Countdown.describe(challenge, now));
 		countdown.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 15f));
-		countdown.setForeground(challenge.isRunning(now) ? ColorScheme.BRAND_ORANGE : Cards.mutedColor());
+		// Green while it is actually running, so "live now" is readable at a glance rather than being
+		// the same colour as everything else.
+		countdown.setForeground(challenge.isRunning(now) ? Theme.LIVE : Theme.GOLD);
 		countdown.setAlignmentX(Component.LEFT_ALIGNMENT);
 		body.add(countdown);
 
@@ -91,7 +92,7 @@ public class ChallengeView extends JPanel
 	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setBackground(Theme.BACKGROUND);
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 
@@ -120,7 +121,7 @@ public class ChallengeView extends JPanel
 
 		JLabel code = new JLabel(challenge.getCode());
 		code.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 18f));
-		code.setForeground(ColorScheme.BRAND_ORANGE);
+		code.setForeground(Theme.GOLD);
 		code.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(code);
 
@@ -138,17 +139,17 @@ public class ChallengeView extends JPanel
 	{
 		JPanel list = new JPanel();
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-		list.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		list.setBackground(Theme.BACKGROUND);
 		list.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		list.add(row(null, "Every " + challenge.getKcPer() + " kills",
-			challenge.getKcPoints() + " pts", ColorScheme.LIGHT_GRAY_COLOR));
+			challenge.getKcPoints() + " pts", Theme.TEXT));
 
 		for (DropRule drop : challenge.getDrops())
 		{
 			list.add(Cards.gap(2));
 			list.add(row(drop.getItemId(), drop.getName(),
-				drop.getPoints() + " pts", ColorScheme.LIGHT_GRAY_COLOR));
+				drop.getPoints() + " pts", Theme.TEXT));
 		}
 
 		if (challenge.getDrops().isEmpty())
@@ -164,7 +165,7 @@ public class ChallengeView extends JPanel
 	{
 		JPanel list = new JPanel();
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-		list.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		list.setBackground(Theme.BACKGROUND);
 		list.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		if (leaderboard.isEmpty())
@@ -179,13 +180,13 @@ public class ChallengeView extends JPanel
 			boolean you = entry.getRsn().equalsIgnoreCase(yourName == null ? "" : yourName);
 
 			JPanel row = new JPanel(new BorderLayout(4, 0));
-			row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			row.setBackground(Theme.CARD);
 			row.setBorder(BorderFactory.createEmptyBorder(4, 6, 4, 6));
 			row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 			JLabel position = new JLabel(place++ + ".");
 			position.setFont(FontManager.getRunescapeSmallFont());
-			position.setForeground(Cards.mutedColor());
+			position.setForeground(Theme.TEXT_MUTED);
 			row.add(position, BorderLayout.WEST);
 
 			JPanel text = new JPanel();
@@ -196,7 +197,7 @@ public class ChallengeView extends JPanel
 			name.setFont(FontManager.getRunescapeBoldFont());
 			// Your own row is highlighted, because on a fifty-person leaderboard finding yourself is
 			// the first thing anyone does.
-			name.setForeground(you ? ColorScheme.BRAND_ORANGE : ColorScheme.LIGHT_GRAY_COLOR);
+			name.setForeground(you ? Theme.GOLD : Theme.TEXT);
 			name.setAlignmentX(Component.LEFT_ALIGNMENT);
 			text.add(name);
 
@@ -205,7 +206,7 @@ public class ChallengeView extends JPanel
 
 			JLabel points = new JLabel(String.valueOf(entry.getPoints()));
 			points.setFont(FontManager.getRunescapeBoldFont());
-			points.setForeground(ColorScheme.BRAND_ORANGE);
+			points.setForeground(Theme.GOLD);
 			row.add(points, BorderLayout.EAST);
 
 			row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
@@ -237,7 +238,7 @@ public class ChallengeView extends JPanel
 		int points = you == null ? 0 : you.getPoints();
 		JLabel total = new JLabel(points + (points == 1 ? " point" : " points"));
 		total.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 16f));
-		total.setForeground(ColorScheme.BRAND_ORANGE);
+		total.setForeground(Theme.GOLD);
 		total.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(total);
 
@@ -268,7 +269,7 @@ public class ChallengeView extends JPanel
 	private JPanel row(Integer itemId, String label, String value, Color colour)
 	{
 		JPanel row = new JPanel(new BorderLayout(4, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setBackground(Theme.CARD);
 		row.setBorder(BorderFactory.createEmptyBorder(3, 6, 3, 6));
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -286,7 +287,7 @@ public class ChallengeView extends JPanel
 
 		JLabel points = new JLabel(value);
 		points.setFont(FontManager.getRunescapeSmallFont());
-		points.setForeground(ColorScheme.BRAND_ORANGE);
+		points.setForeground(Theme.GOLD);
 		row.add(points, BorderLayout.EAST);
 
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));

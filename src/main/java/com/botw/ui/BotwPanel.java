@@ -25,7 +25,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
 
@@ -76,16 +75,16 @@ public class BotwPanel extends PluginPanel
 		this.sender = sender;
 
 		setLayout(new BorderLayout());
-		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setBackground(Theme.BACKGROUND);
 
 		content.setLayout(new BorderLayout());
-		content.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		content.setBackground(Theme.BACKGROUND);
 
 		JScrollPane scroll = new JScrollPane(
 			content, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
 		scroll.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		scroll.getVerticalScrollBar().setUnitIncrement(16);
-		scroll.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+		scroll.getViewport().setBackground(Theme.BACKGROUND);
 		add(scroll, BorderLayout.CENTER);
 
 		showList();
@@ -129,35 +128,39 @@ public class BotwPanel extends PluginPanel
 	{
 		ListView list = new ListView();
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-		list.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		list.setBackground(Theme.BACKGROUND);
 
-		JLabel heading = new JLabel("Boss of the Week");
-		heading.setFont(FontManager.getRunescapeBoldFont());
-		heading.setForeground(ColorScheme.BRAND_ORANGE);
+		JLabel heading = new JLabel("BOSS OF THE WEEK");
+		heading.setFont(Theme.title());
+		heading.setForeground(Theme.GOLD);
 		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
 		list.add(heading);
+
+		JLabel strapline = new JLabel("Clan challenges, counted for you");
+		strapline.setFont(Theme.body());
+		strapline.setForeground(Theme.TEXT_MUTED);
+		strapline.setAlignmentX(Component.LEFT_ALIGNMENT);
+		list.add(strapline);
+
+		list.add(Cards.gap(12));
+
+		list.add(new TileButton("Create a challenge", "Pick a boss and set the points", this::showCreate));
 		list.add(Cards.gap(8));
+		list.add(new TileButton("Join a challenge", "Enter a code from your clan", this::showJoin));
 
-		JButton create = Cards.button("Create a challenge");
-		create.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
-		create.addActionListener(event -> showCreate());
-		list.add(create);
-
-		list.add(Cards.gap(4));
-		list.add(joinRow());
-		list.add(Cards.gap(10));
+		list.add(Cards.gap(14));
 
 		List<ChallengeStore.Membership> mine = new ArrayList<>(challenges.all());
 		if (mine.isEmpty())
 		{
-			list.add(Cards.muted("Nothing yet. Make a challenge, or paste a code to join one."));
+			list.add(muted("Nothing yet. Make a challenge, or join one with a code."));
 		}
 		else
 		{
-			list.add(Cards.sectionLabel("Your challenges"));
+			list.add(sectionLabel("Your challenges"));
 			for (ChallengeStore.Membership membership : mine)
 			{
-				list.add(Cards.gap(3));
+				list.add(Cards.gap(4));
 				list.add(challengeCard(membership));
 			}
 		}
@@ -165,25 +168,63 @@ public class BotwPanel extends PluginPanel
 		show(list);
 	}
 
-	/** Joining is a code and a button, so it does not need a screen of its own. */
-	private JPanel joinRow()
+	/**
+	 * Joining, once the tile has been pressed. A code box that is only there when it is wanted, rather
+	 * than a field sitting on the front screen for the one time in twenty it gets used.
+	 */
+	private void showJoin()
 	{
-		JPanel row = new JPanel();
-		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		row.setAlignmentX(Component.LEFT_ALIGNMENT);
-		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
 
-		JTextField code = new JTextField();
-		code.setToolTipText("The code the challenge's creator gave you");
-		row.add(code);
-		row.add(javax.swing.Box.createHorizontalStrut(4));
+		JLabel heading = new JLabel("JOIN A CHALLENGE");
+		heading.setFont(Theme.figure(18f));
+		heading.setForeground(Theme.GOLD);
+		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+		screen.add(heading);
 
-		JButton join = Cards.button("Join");
-		join.addActionListener(event -> join(code.getText().trim().toUpperCase()));
-		row.add(join);
+		screen.add(Cards.gap(10));
+		screen.add(muted("Paste the code the challenge's creator gave you."));
+		screen.add(Cards.gap(8));
 
-		return row;
+		JTextField code = Theme.textField(new JTextField());
+		code.setAlignmentX(Component.LEFT_ALIGNMENT);
+		code.setMaximumSize(new Dimension(Integer.MAX_VALUE, 34));
+		code.setFont(Theme.figure(16f));
+		code.setHorizontalAlignment(JTextField.CENTER);
+		screen.add(code);
+
+		screen.add(Cards.gap(10));
+		screen.add(new TileButton("Join", null, () -> join(code.getText().trim().toUpperCase())));
+
+		screen.add(Cards.gap(8));
+		JButton back = Cards.button("← Back");
+		back.addActionListener(event -> showList());
+		screen.add(back);
+
+		show(screen);
+
+		// The code box is the only thing on this screen, so put the cursor in it.
+		SwingUtilities.invokeLater(code::requestFocusInWindow);
+	}
+
+	private JLabel sectionLabel(String text)
+	{
+		JLabel label = new JLabel(text.toUpperCase());
+		label.setFont(Theme.body());
+		label.setForeground(Theme.TEXT_MUTED);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
+	}
+
+	private JLabel muted(String text)
+	{
+		JLabel label = new JLabel("<html><body style='width:165px'>" + text + "</body></html>");
+		label.setFont(Theme.body());
+		label.setForeground(Theme.TEXT_MUTED);
+		label.setAlignmentX(Component.LEFT_ALIGNMENT);
+		return label;
 	}
 
 	private JPanel challengeCard(ChallengeStore.Membership membership)
@@ -191,7 +232,7 @@ public class BotwPanel extends PluginPanel
 		Challenge challenge = membership.challenge;
 
 		JPanel card = new JPanel(new BorderLayout(4, 0));
-		card.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		card.setBackground(Theme.CARD);
 		card.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
 		card.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -200,8 +241,8 @@ public class BotwPanel extends PluginPanel
 		text.setBackground(card.getBackground());
 
 		JLabel name = new JLabel(challenge.getName());
-		name.setFont(FontManager.getRunescapeBoldFont());
-		name.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		name.setFont(Theme.heading());
+		name.setForeground(Theme.TEXT);
 		name.setAlignmentX(Component.LEFT_ALIGNMENT);
 		text.add(name);
 
@@ -209,9 +250,9 @@ public class BotwPanel extends PluginPanel
 		text.add(Cards.mutedInRow(Countdown.describe(challenge, System.currentTimeMillis())));
 
 		// Which side of the challenge this account is on, said on the card rather than only inside.
-		JLabel tag = new JLabel(membership.isCreator() ? "Creator" : "Participant");
-		tag.setFont(FontManager.getRunescapeSmallFont());
-		tag.setForeground(membership.isCreator() ? ColorScheme.BRAND_ORANGE : Cards.mutedColor());
+		JLabel tag = new JLabel(membership.isCreator() ? "CREATOR" : "PARTICIPANT");
+		tag.setFont(Theme.body());
+		tag.setForeground(membership.isCreator() ? Theme.GOLD : Theme.TEXT_MUTED);
 		tag.setAlignmentX(Component.LEFT_ALIGNMENT);
 		text.add(tag);
 
@@ -371,8 +412,8 @@ public class BotwPanel extends PluginPanel
 	{
 		JPanel waiting = new JPanel();
 		waiting.setLayout(new BoxLayout(waiting, BoxLayout.Y_AXIS));
-		waiting.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		waiting.add(Cards.muted(message));
+		waiting.setBackground(Theme.BACKGROUND);
+		waiting.add(muted(message));
 		show(waiting);
 	}
 }

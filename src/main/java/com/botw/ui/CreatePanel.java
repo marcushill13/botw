@@ -29,7 +29,6 @@ import javax.swing.SwingConstants;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.http.api.item.ItemPrice;
 
@@ -84,11 +83,11 @@ public class CreatePanel extends JPanel
 		this.onCancel = onCancel;
 
 		setLayout(new BorderLayout());
-		setBackground(ColorScheme.DARK_GRAY_COLOR);
+		setBackground(Theme.BACKGROUND);
 
 		JPanel form = new JPanel();
 		form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
-		form.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		form.setBackground(Theme.BACKGROUND);
 		form.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
 		form.add(Cards.field("Challenge name", field(name)));
@@ -114,14 +113,14 @@ public class CreatePanel extends JPanel
 
 		form.add(Cards.sectionLabel("Drops"));
 		dropList.setLayout(new BoxLayout(dropList, BoxLayout.Y_AXIS));
-		dropList.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		dropList.setBackground(Theme.BACKGROUND);
 		dropList.setAlignmentX(Component.LEFT_ALIGNMENT);
 		form.add(dropList);
 		form.add(Cards.gap(6));
 
 		form.add(Cards.field("Add any item", field(itemSearch)));
 		itemResults.setLayout(new BoxLayout(itemResults, BoxLayout.Y_AXIS));
-		itemResults.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		itemResults.setBackground(Theme.BACKGROUND);
 		itemResults.setAlignmentX(Component.LEFT_ALIGNMENT);
 		form.add(itemResults);
 
@@ -143,7 +142,7 @@ public class CreatePanel extends JPanel
 	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setBackground(Theme.BACKGROUND);
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
 
@@ -160,7 +159,7 @@ public class CreatePanel extends JPanel
 	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		row.setBackground(Theme.BACKGROUND);
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 28));
 
@@ -247,7 +246,7 @@ public class CreatePanel extends JPanel
 	private JPanel dropRow(DropRule rule)
 	{
 		JPanel row = new JPanel(new BorderLayout(4, 0));
-		row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		row.setBackground(Theme.CARD);
 		row.setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
@@ -260,7 +259,7 @@ public class CreatePanel extends JPanel
 
 		JLabel label = new JLabel("<html><body style='width:78px'>" + rule.getName() + "</body></html>");
 		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setForeground(Theme.TEXT);
 		row.add(label, BorderLayout.CENTER);
 
 		JPanel right = new JPanel();
@@ -405,8 +404,9 @@ public class CreatePanel extends JPanel
 
 	private static JTextField field(JTextField field)
 	{
+		Theme.textField(field);
 		field.setAlignmentX(Component.LEFT_ALIGNMENT);
-		field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 22));
+		field.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
 		return field;
 	}
 
@@ -421,7 +421,7 @@ public class CreatePanel extends JPanel
 	{
 		JLabel label = new JLabel(" " + text + " ");
 		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		label.setForeground(Theme.TEXT);
 		return label;
 	}
 

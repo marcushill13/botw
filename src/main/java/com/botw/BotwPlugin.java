@@ -93,7 +93,7 @@ public class BotwPlugin extends Plugin
 
 		// The panel refreshes itself once points land, so an open leaderboard catches up without the
 		// player pressing anything.
-		sender.setOnSent(panel::onPointsSent);
+		sender.setOnSent(panel::refreshList);
 		sender.start();
 
 		// Evidence goes to the creator on a background thread. Best effort by design: the full-size
@@ -163,6 +163,11 @@ public class BotwPlugin extends Plugin
 		// for. Logging in on a second character has to swap them over, not merge them.
 		challenges.load();
 		outbox.load();
+
+		// And the panel has to be told. It is built at start-up, before there is an account, so without
+		// this it goes on showing the empty list it was born with until something else happens to
+		// rebuild it — which is why the challenges only turned up after a trip through Create or Join.
+		panel.refreshList();
 
 		// A backlog from an earlier session goes out now rather than waiting for the next timer.
 		sender.flush();

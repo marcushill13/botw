@@ -108,11 +108,15 @@ public class BotwPanel extends PluginPanel
 	}
 
 	/**
+	 * Redraws the list of challenges, if that is what is on screen.
+	 * <p>
 	 * Called after points have been sent, so an open leaderboard catches up without the player pressing
-	 * anything. Only refreshes the list, because reloading a form under someone's hands would lose what
-	 * they had typed.
+	 * anything, and after logging in, when the saved challenges become readable for the first time.
+	 * <p>
+	 * Deliberately does nothing on the other screens. Rebuilding a half-filled form under someone's
+	 * hands would throw away what they had typed.
 	 */
-	public void onPointsSent()
+	public void refreshList()
 	{
 		SwingUtilities.invokeLater(() ->
 		{
@@ -120,6 +124,62 @@ public class BotwPanel extends PluginPanel
 			{
 				showList();
 			}
+		});
+	}
+
+	/**
+	 * Re-reads the saved challenges, then brings each one up to date from the service.
+	 * <p>
+	 * The local half is what the button is really for. Challenges are saved against the logged-in
+	 * account, so before login there is nothing to read and the list is empty; this is how it fills in
+	 * without the player having to leave the screen and come back.
+	 * <p>
+	 * The service is then asked about each one, because the creator may have renamed it, moved its
+	 * dates or changed what things are worth since it was last looked at. That half is done off the
+	 * EDT, and the list is drawn once without waiting for it, so the button always feels immediate.
+	 */
+	private void reloadList()
+	{
+		challenges.load();
+		showList();
+
+		List<String> codes = new ArrayList<>();
+		for (ChallengeStore.Membership membership : challenges.all())
+		{
+			codes.add(membership.challenge.getCode());
+		}
+
+		if (codes.isEmpty())
+		{
+			return;
+		}
+
+		executor.execute(() ->
+		{
+			List<Challenge> fresh = new ArrayList<>();
+			for (String code : codes)
+			{
+				BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
+
+				// A challenge that cannot be reached is left exactly as it was. A moment without a
+				// network is not evidence that a challenge is gone, and dropping it would take the
+				// player's tokens with it.
+				if (result.ok() && result.getValue().getChallenge() != null)
+				{
+					fresh.add(result.getValue().getChallenge());
+				}
+			}
+
+			SwingUtilities.invokeLater(() ->
+			{
+				for (Challenge challenge : fresh)
+				{
+					// Tokens survive this: a read carries the challenge, never the secrets.
+					challenges.put(challenge, null, null);
+				}
+
+				refreshList();
+			});
 		});
 	}
 
@@ -131,7 +191,7 @@ public class BotwPanel extends PluginPanel
 		content.repaint();
 	}
 
-	/** Marker so {@link #onPointsSent()} can tell which screen is up without tracking state. */
+	/** Marker so {@link #refreshList()} can tell which screen is up without tracking state. */
 	private static class ListView extends JPanel
 	{
 	}
@@ -162,14 +222,20 @@ public class BotwPanel extends PluginPanel
 
 		list.add(Cards.gap(14));
 
+		// The heading and its reload are outside the empty check on purpose. An empty list is the case
+		// that most needs reloading — before logging in there is nothing saved to read — and a button
+		// that appears only once it is no longer needed would be no use at all.
+		list.add(listHeader());
+
 		List<ChallengeStore.Membership> mine = new ArrayList<>(challenges.all());
 		if (mine.isEmpty())
 		{
-			list.add(muted("Nothing yet. Make a challenge, or join one with a code."));
+			list.add(Cards.gap(4));
+			list.add(muted("Nothing yet. Make a challenge, or join one with a code. "
+				+ "If you have joined one already, log in and press Reload."));
 		}
 		else
 		{
-			list.add(sectionLabel("Your challenges"));
 			for (ChallengeStore.Membership membership : mine)
 			{
 				list.add(Cards.gap(4));
@@ -219,6 +285,27 @@ public class BotwPanel extends PluginPanel
 
 		// The code box is the only thing on this screen, so put the cursor in it.
 		SwingUtilities.invokeLater(code::requestFocusInWindow);
+	}
+
+	/**
+	 * "Your challenges", with the reload beside it rather than below, so it costs no vertical room in a
+	 * sidebar that has none to spare.
+	 */
+	private JPanel listHeader()
+	{
+		JPanel row = new JPanel(new BorderLayout(4, 0));
+		row.setBackground(Theme.BACKGROUND);
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+		row.add(sectionLabel("Your challenges"), BorderLayout.WEST);
+
+		JButton reload = Cards.button("Reload");
+		reload.setToolTipText("Re-read your saved challenges and check them against the server");
+		reload.addActionListener(event -> reloadList());
+		row.add(reload, BorderLayout.EAST);
+
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
+		return row;
 	}
 
 	private JLabel sectionLabel(String text)

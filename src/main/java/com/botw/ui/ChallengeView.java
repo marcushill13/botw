@@ -37,6 +37,19 @@ public class ChallengeView extends JPanel
 		Runnable onBack,
 		Runnable onRefresh)
 	{
+		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, null);
+	}
+
+	public ChallengeView(
+		Challenge challenge,
+		List<LeaderboardEntry> leaderboard,
+		String yourName,
+		boolean creator,
+		ItemManager itemManager,
+		Runnable onBack,
+		Runnable onRefresh,
+		JPanel evidence)
+	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
 
@@ -84,6 +97,17 @@ public class ChallengeView extends JPanel
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Your points"));
 		body.add(yourPoints(leaderboard, yourName, challenge));
+
+		// Only the creator gets this, and only when there is a token to fetch it with.
+		if (evidence != null)
+		{
+			body.add(Cards.gap(12));
+			body.add(Cards.sectionLabel("Evidence"));
+			body.add(Cards.gap(2));
+			body.add(Cards.muted("A screenshot of every scoring drop, sent automatically."));
+			body.add(Cards.gap(4));
+			body.add(evidence);
+		}
 
 		add(body, BorderLayout.NORTH);
 	}

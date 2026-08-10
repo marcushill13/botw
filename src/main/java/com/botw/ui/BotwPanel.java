@@ -407,15 +407,21 @@ public class BotwPanel extends PluginPanel
 				BotwApi.Snapshot snapshot = result.getValue();
 				challenges.put(snapshot.getChallenge(), null, null);
 
-				List<LeaderboardEntry> leaderboard = snapshot.getLeaderboard();
+				String creatorToken = challenges.creatorTokenFor(code);
+				JPanel evidence = creatorToken == null
+					? null
+					: new EvidencePanel(code, snapshot.getChallenge().getName(), creatorToken,
+						config.serverUrl(), api, executor);
+
 				show(new ChallengeView(
 					snapshot.getChallenge(),
-					leaderboard,
+					snapshot.getLeaderboard(),
 					playerName.get(),
 					membership != null && membership.isCreator(),
 					itemManager,
 					this::showList,
-					() -> openChallenge(code)));
+					() -> openChallenge(code),
+					evidence));
 			});
 		});
 	}

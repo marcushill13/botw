@@ -2,7 +2,7 @@
 
 Run a clan Boss of the Week competition without the admin.
 
-Someone sets up a challenge — a boss, a week, and what things are worth — and shares a code. Everyone
+Someone sets up a challenge, a boss, a week, and what things are worth, and shares a code. Everyone
 else pastes the code in. From then on the plugin counts kills and drops by itself and keeps a
 leaderboard everyone can see. No screenshots to send, no spreadsheet to maintain, no password to
 remember.
@@ -13,7 +13,7 @@ remember.
 2. Search for the boss. Its uniques and its pet fill themselves in, each with a points box and an X if
    you do not want it counted
 3. Add anything else by searching for it
-4. Say what a kill count is worth — "every 10 kills = 1 point", or whatever you like
+4. Say what a kill count is worth "every 10 kills = 1 point", or whatever you like
 5. Share the code it gives you
 
 Joining is that code and a button.

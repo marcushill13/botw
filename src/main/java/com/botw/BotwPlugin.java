@@ -93,7 +93,7 @@ public class BotwPlugin extends Plugin
 
 		// The panel refreshes itself once points land, so an open leaderboard catches up without the
 		// player pressing anything.
-		sender.setOnSent(panel::refreshList);
+		sender.setOnSent(panel::onPointsSent);
 		sender.start();
 
 		// Evidence goes to the creator on a background thread. Best effort by design: the full-size

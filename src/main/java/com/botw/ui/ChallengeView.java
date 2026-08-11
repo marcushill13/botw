@@ -60,6 +60,10 @@ public class ChallengeView extends JPanel
 	/** Held so the leaderboard alone can be redrawn when edit mode is switched on and off. */
 	private final JPanel leaderboardHolder = new JPanel();
 
+	/** Held for the same reason: both move when points land, and nothing else on the screen does. */
+	private final JPanel yourPointsHolder = new JPanel();
+
+	private Challenge challenge;
 	private List<LeaderboardEntry> entries = new ArrayList<>();
 	private String yourName;
 	private LeaderboardEditor editor;
@@ -114,6 +118,7 @@ public class ChallengeView extends JPanel
 	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
+		this.challenge = challenge;
 		this.entries = leaderboard;
 		this.yourName = yourName;
 		this.editor = editor;
@@ -172,7 +177,12 @@ public class ChallengeView extends JPanel
 
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Your points"));
-		body.add(yourPoints(leaderboard, yourName, challenge));
+
+		yourPointsHolder.setLayout(new BoxLayout(yourPointsHolder, BoxLayout.Y_AXIS));
+		yourPointsHolder.setBackground(Theme.BACKGROUND);
+		yourPointsHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
+		renderYourPoints();
+		body.add(yourPointsHolder);
 
 		// Only the creator gets this, and only when there is a token to fetch it with.
 		if (evidence != null)
@@ -308,6 +318,50 @@ public class ChallengeView extends JPanel
 		}
 
 		return list;
+	}
+
+	public String getChallengeCode()
+	{
+		return challenge.getCode();
+	}
+
+	/**
+	 * Takes a fresh leaderboard without rebuilding the screen.
+	 * <p>
+	 * Called when this client's kills reach the service, which is a minute or so after they happen.
+	 * Before this, points landed on the server and the open screen went on showing whatever it had been
+	 * built with — you killed something, the evidence appeared, and your score did not move until you
+	 * pressed Refresh. The numbers were never wrong, only the picture of them.
+	 * <p>
+	 * Only the two parts that can have changed are redrawn, rather than the whole screen, so this does
+	 * not throw away where you had scrolled to or shut the evidence folder you were reading.
+	 */
+	public void update(List<LeaderboardEntry> fresh)
+	{
+		// Never mid-edit. The creator has half-typed numbers in those boxes, and replacing the rows
+		// under them would lose what they had entered.
+		if (editing)
+		{
+			return;
+		}
+
+		entries = fresh;
+		renderLeaderboard();
+		renderYourPoints();
+	}
+
+	/** Whether the creator is part way through changing scores, in which case leave the screen alone. */
+	public boolean isEditingLeaderboard()
+	{
+		return editing;
+	}
+
+	private void renderYourPoints()
+	{
+		yourPointsHolder.removeAll();
+		yourPointsHolder.add(yourPoints(entries, yourName, challenge));
+		yourPointsHolder.revalidate();
+		yourPointsHolder.repaint();
 	}
 
 	/** Fills {@link #leaderboardHolder}, in whichever mode it is currently in. */
@@ -607,7 +661,12 @@ public class ChallengeView extends JPanel
 		total.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(total);
 
-		if (you == null || (you.getKills() == 0 && you.getDrops() == 0))
+		// Somebody the creator entered by hand has no kills and no drops but does have points, and
+		// telling them to go and kill something under a score of ten would read as a broken screen.
+		boolean nothingYet = you == null
+			|| (you.getKills() == 0 && you.getDrops() == 0 && you.getAdjustment() == 0);
+
+		if (nothingYet)
 		{
 			card.add(Cards.gap(2));
 			card.add(Cards.muted(challenge.isRunning(System.currentTimeMillis())
@@ -621,9 +680,20 @@ public class ChallengeView extends JPanel
 				? you.getKills() / challenge.getKcPer() * challenge.getKcPoints()
 				: 0;
 
+			// Taken off before the drops are worked out. This line used to be the whole remainder, so
+			// anything the creator had added showed up as though a drop had been worth it — a 30 point
+			// drop reading as 50 because twenty had been granted by hand.
+			int adjustment = you.getAdjustment();
+
 			card.add(Cards.muted(you.getKills() + " kills — " + killPoints + " pts"));
 			card.add(Cards.muted(you.getDrops() + " counted drops — "
-				+ (points - killPoints) + " pts"));
+				+ (points - killPoints - adjustment) + " pts"));
+
+			if (adjustment != 0)
+			{
+				card.add(Cards.muted("Set by the creator — "
+					+ (adjustment > 0 ? "+" : "") + adjustment + " pts"));
+			}
 		}
 
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));

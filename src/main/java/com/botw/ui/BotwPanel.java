@@ -109,13 +109,72 @@ public class BotwPanel extends PluginPanel
 	}
 
 	/**
+	 * Called once this client's points have reached the service, so what is on screen catches up
+	 * without anyone pressing anything.
+	 * <p>
+	 * Both screens that show points have to be handled, which is the bug this was written for: only the
+	 * list was, so with a challenge open you could kill something, watch the screenshot appear in the
+	 * evidence, and see your score sit still until you pressed Refresh.
+	 * <p>
+	 * The forms are still left alone. Rebuilding a half-filled one under someone's hands would throw
+	 * away what they had typed.
+	 */
+	public void onPointsSent()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (content.getComponentCount() == 0)
+			{
+				return;
+			}
+
+			Component screen = content.getComponent(0);
+
+			if (screen instanceof ListView)
+			{
+				showList();
+				return;
+			}
+
+			if (!(screen instanceof ChallengeView))
+			{
+				return;
+			}
+
+			ChallengeView view = (ChallengeView) screen;
+			if (view.isEditingLeaderboard())
+			{
+				return;
+			}
+
+			String code = view.getChallengeCode();
+
+			executor.execute(() ->
+			{
+				BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
+				if (!result.ok())
+				{
+					// Silent on purpose. This runs on a timer nobody asked for, and a warning box every
+					// minute the connection hiccups would be worse than a leaderboard a minute behind.
+					return;
+				}
+
+				SwingUtilities.invokeLater(() ->
+				{
+					// Still the same screen? A minute is long enough to have gone somewhere else.
+					if (content.getComponentCount() > 0 && content.getComponent(0) == view)
+					{
+						view.update(result.getValue().getLeaderboard());
+					}
+				});
+			});
+		});
+	}
+
+	/**
 	 * Redraws the list of challenges, if that is what is on screen.
 	 * <p>
-	 * Called after points have been sent, so an open leaderboard catches up without the player pressing
-	 * anything, and after logging in, when the saved challenges become readable for the first time.
-	 * <p>
-	 * Deliberately does nothing on the other screens. Rebuilding a half-filled form under someone's
-	 * hands would throw away what they had typed.
+	 * Used after logging in, when the saved challenges become readable for the first time.
 	 */
 	public void refreshList()
 	{

@@ -106,16 +106,36 @@ public class Outbox
 		configManager.setRSProfileConfiguration(CONFIG_GROUP, KEY, gson.toJson(pending));
 	}
 
-	public synchronized void add(Collection<PendingEvent> events)
+	/**
+	 * Told whenever something is put in, so a kill can be sent shortly afterwards rather than waiting
+	 * for the next scheduled sweep. Set by whoever does the sending; does nothing until then.
+	 */
+	private Runnable onAdded = () ->
 	{
-		pending.addAll(events);
+	};
 
-		while (pending.size() > MAX_PENDING)
+	public void setOnAdded(Runnable onAdded)
+	{
+		this.onAdded = onAdded;
+	}
+
+	public void add(Collection<PendingEvent> events)
+	{
+		synchronized (this)
 		{
-			pending.remove(0);
+			pending.addAll(events);
+
+			while (pending.size() > MAX_PENDING)
+			{
+				pending.remove(0);
+			}
+
+			save();
 		}
 
-		save();
+		// Outside the lock. This ends up scheduling work that will come back here for the events, and
+		// calling it while holding the monitor is how that turns into a deadlock one day.
+		onAdded.run();
 	}
 
 	public synchronized boolean isEmpty()

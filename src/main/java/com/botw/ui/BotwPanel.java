@@ -591,6 +591,12 @@ public class BotwPanel extends PluginPanel
 
 		executor.execute(() ->
 		{
+			// Sent before read, so opening a challenge or pressing Refresh shows the kill that has just
+			// happened. Reading first would show the board as it was before this client had said
+			// anything, which is a refresh that appears not to work — press it, see the old number,
+			// press it again, see the old number.
+			sender.flush();
+
 			BotwApi.Result<BotwApi.Snapshot> result = api.read(config.serverUrl(), code);
 
 			SwingUtilities.invokeLater(() ->

@@ -24,8 +24,21 @@ import lombok.extern.slf4j.Slf4j;
 @Singleton
 public class EventSender
 {
-	/** Often enough that the leaderboard feels current, rarely enough to be cheap. */
+	/**
+	 * The safety net: catches whatever a failed send left behind, and anything held over from a
+	 * previous session. Not what makes a kill appear — {@link #nudge()} does that.
+	 */
 	private static final int EVERY_SECONDS = 60;
+
+	/**
+	 * How long after a kill it gets sent.
+	 * <p>
+	 * Long enough that a boss killed three times over goes in one request rather than three, short
+	 * enough that nobody waits for it. Relying on the minute sweep meant a kill could take a full
+	 * minute to show, and pressing Refresh in the meantime did not help: that only re-reads the
+	 * service, which had not been told yet.
+	 */
+	private static final int SOON_SECONDS = 5;
 
 	private final ScheduledExecutorService executor;
 	private final Outbox outbox;
@@ -34,6 +47,9 @@ public class EventSender
 	private final BotwConfig config;
 
 	private ScheduledFuture<?> scheduled;
+
+	/** The one-off send that follows a kill. Held so a burst of kills schedules one, not one each. */
+	private ScheduledFuture<?> soon;
 
 	/** Told after every successful send, so the panel can refresh without polling separately. */
 	private Runnable onSent = () ->
@@ -63,17 +79,47 @@ public class EventSender
 	public void start()
 	{
 		stop();
+
+		// Anything put in the outbox from here on brings a send with it.
+		outbox.setOnAdded(this::nudge);
+
 		scheduled = executor.scheduleWithFixedDelay(
 			this::flush, EVERY_SECONDS, EVERY_SECONDS, TimeUnit.SECONDS);
 	}
 
 	public void stop()
 	{
+		outbox.setOnAdded(() ->
+		{
+		});
+
 		if (scheduled != null)
 		{
 			scheduled.cancel(false);
 			scheduled = null;
 		}
+
+		if (soon != null)
+		{
+			soon.cancel(false);
+			soon = null;
+		}
+	}
+
+	/**
+	 * Sends in a few seconds rather than at the next sweep.
+	 * <p>
+	 * Ignored if one is already on its way, which is what keeps a run of kills to a single request:
+	 * the first one books the send and the rest ride along with it.
+	 */
+	public synchronized void nudge()
+	{
+		if (soon != null && !soon.isDone())
+		{
+			return;
+		}
+
+		soon = executor.schedule(this::flush, SOON_SECONDS, TimeUnit.SECONDS);
 	}
 
 	/**

@@ -587,6 +587,17 @@ public class BotwPanel extends PluginPanel
 
 	private void openChallenge(String code)
 	{
+		openChallenge(code, false);
+	}
+
+	/**
+	 * @param asPlayer draw it the way a participant sees it, even for the creator. Whoever runs a
+	 *                 challenge holds its creator token and so can never reach the plain screen on
+	 *                 their own account — they get the dashboard even after joining — which leaves
+	 *                 them unable to see what they are asking their clan to use.
+	 */
+	private void openChallenge(String code, boolean asPlayer)
+	{
 		busy("Loading…");
 
 		executor.execute(() ->
@@ -624,26 +635,33 @@ public class BotwPanel extends PluginPanel
 				BotwApi.Snapshot snapshot = result.getValue();
 				challenges.put(snapshot.getChallenge(), null, null);
 
-				String creatorToken = challenges.creatorTokenFor(code);
+				// Everything the creator gets hangs off this one token, so the preview is simply this
+				// being treated as absent. That is what makes it an honest preview rather than a
+				// separate screen that could drift out of step with the real one.
+				String creatorToken = asPlayer ? null : challenges.creatorTokenFor(code);
+
 				JPanel evidence = creatorToken == null
 					? null
 					: new EvidencePanel(code, snapshot.getChallenge().getName(), creatorToken,
 						config.serverUrl(), api, executor, snapshot.getLeaderboard());
 
 				Challenge open = snapshot.getChallenge();
+				boolean canPreview = !asPlayer && challenges.creatorTokenFor(code) != null;
 
 				show(new ChallengeView(
 					open,
 					snapshot.getLeaderboard(),
 					playerName.get(),
-					membership != null && membership.isCreator(),
+					!asPlayer && membership != null && membership.isCreator(),
 					itemManager,
 					this::showList,
-					() -> openChallenge(code),
+					() -> openChallenge(code, asPlayer),
 					evidence,
 					creatorToken == null ? null : () -> showEdit(open),
 					creatorToken == null ? null : () -> delete(code),
-					creatorToken == null ? null : leaderboardEditor(code, creatorToken)));
+					creatorToken == null ? null : leaderboardEditor(code, creatorToken),
+					canPreview ? () -> openChallenge(code, true) : null,
+					asPlayer ? () -> openChallenge(code, false) : null));
 			});
 		});
 	}

@@ -95,7 +95,7 @@ public class ChallengeView extends JPanel
 		JPanel evidence)
 	{
 		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, evidence,
-			null, null, null);
+			null, null, null, null, null);
 	}
 
 	/**
@@ -114,7 +114,9 @@ public class ChallengeView extends JPanel
 		JPanel evidence,
 		Runnable onEdit,
 		Runnable onDelete,
-		LeaderboardEditor editor)
+		LeaderboardEditor editor,
+		Runnable onPreview,
+		Runnable onEndPreview)
 	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
@@ -156,10 +158,16 @@ public class ChallengeView extends JPanel
 		body.add(Cards.gap(8));
 		body.add(codeRow(challenge, creator));
 
-		if (onEdit != null || onDelete != null)
+		if (onEndPreview != null)
 		{
 			body.add(Cards.gap(6));
-			body.add(creatorControls(challenge, onEdit, onDelete));
+			body.add(previewBanner(onEndPreview));
+		}
+
+		if (onEdit != null || onDelete != null || onPreview != null)
+		{
+			body.add(Cards.gap(6));
+			body.add(creatorControls(challenge, onEdit, onDelete, onPreview));
 		}
 
 		body.add(Cards.gap(10));
@@ -251,13 +259,55 @@ public class ChallengeView extends JPanel
 	 * Deleting asks first and says what goes with it. A challenge takes the events and the screenshots
 	 * down with it, and that is not something to discover afterwards.
 	 */
-	private JPanel creatorControls(Challenge challenge, Runnable onEdit, Runnable onDelete)
+	/**
+	 * Says loudly that this is not the real thing, and gets back out.
+	 * <p>
+	 * Without it the preview is indistinguishable from having lost your creator rights, which is a
+	 * frightening thing to see on a challenge you are running.
+	 */
+	private JPanel previewBanner(Runnable onEndPreview)
+	{
+		JPanel card = Cards.card();
+
+		JLabel heading = new JLabel("VIEWING AS A PLAYER");
+		heading.setFont(FontManager.getRunescapeBoldFont());
+		heading.setForeground(Theme.GOLD);
+		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+		card.add(heading);
+
+		card.add(Cards.gap(2));
+		card.add(Cards.muted("This is what everyone who joined sees. Nothing here is changed for them."));
+		card.add(Cards.gap(4));
+
+		JButton back = Cards.button("Back to your dashboard");
+		back.setAlignmentX(Component.LEFT_ALIGNMENT);
+		back.addActionListener(event -> onEndPreview.run());
+		card.add(back);
+
+		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+		return card;
+	}
+
+	private JPanel creatorControls(
+		Challenge challenge, Runnable onEdit, Runnable onDelete, Runnable onPreview)
 	{
 		JPanel row = new JPanel();
 		row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
 		row.setBackground(Theme.BACKGROUND);
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+
+		if (onPreview != null)
+		{
+			// Whoever runs a challenge holds its creator token, so they can never reach the plain
+			// participant screen on their own account — they see the dashboard even after joining. This
+			// shows them what the rest of the clan is looking at.
+			JButton preview = Cards.button("View as player");
+			preview.setToolTipText("See this challenge the way everyone who joined sees it");
+			preview.addActionListener(event -> onPreview.run());
+			row.add(preview);
+			row.add(javax.swing.Box.createHorizontalStrut(4));
+		}
 
 		if (onEdit != null)
 		{

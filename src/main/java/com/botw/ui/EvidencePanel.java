@@ -5,6 +5,8 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Image;
+import java.awt.Toolkit;
+import java.awt.datatransfer.StringSelection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.ByteArrayInputStream;
@@ -31,7 +33,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
-import net.runelite.client.util.LinkBrowser;
 
 /**
  * The evidence, for whoever is running the challenge.
@@ -380,24 +381,33 @@ public class EvidencePanel extends JPanel
 	}
 
 	/**
-	 * Opens the folder the export landed in, because otherwise the useful part of this is a file path
-	 * in a log nobody reads.
+	 * Says where the export went, and puts the path on the clipboard so it can be pasted straight into
+	 * a file browser.
 	 * <p>
-	 * Through RuneLite's own helper rather than AWT's Desktop, which the plugin hub does not allow.
-	 * This is the same call the client's screenshot plugin makes to open the very same folder, and it
-	 * copes with the platforms where Desktop is absent or simply hangs.
+	 * It would be nicer to open the folder, and this did. Both ways of doing that — AWT's
+	 * {@code Desktop} and RuneLite's {@code LinkBrowser} — are restricted on the plugin hub, because
+	 * handing a local path to the system to open is handing it something to execute. Copying the path
+	 * is the way round it that the hub's maintainers point people to, and it costs the reader one
+	 * paste.
 	 */
 	private void reveal(File zip)
 	{
+		String path = zip.getAbsolutePath();
+
 		try
 		{
-			LinkBrowser.open(zip.getParentFile().toString());
+			Toolkit.getDefaultToolkit().getSystemClipboard()
+				.setContents(new StringSelection(path), null);
+
+			Cards.warn(this, "Saved to " + path + System.lineSeparator()
+				+ System.lineSeparator() + "The path is on your clipboard.");
 		}
 		catch (RuntimeException e)
 		{
-			// It reports its own failures, so this is only for the unexpected kind.
-			log.debug("Could not open the export folder", e);
-			Cards.warn(this, "Saved to " + zip.getAbsolutePath());
+			// A clipboard can be unavailable or held by something else. The path is the point, so it
+			// is still shown; only the convenience is lost.
+			log.debug("Could not copy the export path", e);
+			Cards.warn(this, "Saved to " + path);
 		}
 	}
 

@@ -3,7 +3,6 @@ package com.botw.ui;
 import com.botw.net.BotwApi;
 import java.awt.BorderLayout;
 import java.awt.Component;
-import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.Image;
 import java.awt.event.MouseAdapter;
@@ -32,6 +31,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
+import net.runelite.client.util.LinkBrowser;
 
 /**
  * The evidence, for whoever is running the challenge.
@@ -382,23 +382,23 @@ public class EvidencePanel extends JPanel
 	/**
 	 * Opens the folder the export landed in, because otherwise the useful part of this is a file path
 	 * in a log nobody reads.
+	 * <p>
+	 * Through RuneLite's own helper rather than AWT's Desktop, which the plugin hub does not allow.
+	 * This is the same call the client's screenshot plugin makes to open the very same folder, and it
+	 * copes with the platforms where Desktop is absent or simply hangs.
 	 */
 	private void reveal(File zip)
 	{
 		try
 		{
-			if (Desktop.isDesktopSupported())
-			{
-				Desktop.getDesktop().open(zip.getParentFile());
-				return;
-			}
+			LinkBrowser.open(zip.getParentFile().toString());
 		}
-		catch (IOException | RuntimeException e)
+		catch (RuntimeException e)
 		{
+			// It reports its own failures, so this is only for the unexpected kind.
 			log.debug("Could not open the export folder", e);
+			Cards.warn(this, "Saved to " + zip.getAbsolutePath());
 		}
-
-		Cards.warn(this, "Saved to " + zip.getAbsolutePath());
 	}
 
 	private static String safe(String name)

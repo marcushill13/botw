@@ -21,6 +21,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -614,10 +615,21 @@ public class BotwPanel extends PluginPanel
 			{
 				ChallengeStore.Membership membership = challenges.find(code);
 
+				if (result.isGone())
+				{
+					// The service answered and said there is no such challenge: it was deleted by whoever
+					// ran it, or it never existed. Keeping it on the list means a card that cannot be
+					// opened and cannot be got rid of, so this is the one case where removing it is
+					// offered. Offered, not done — it is the player's list.
+					forget(code, membership);
+					return;
+				}
+
 				if (!result.ok())
 				{
 					// Fall back to what is stored rather than showing nothing. Someone on a train can
-					// still check when their challenge ends.
+					// still check when their challenge ends. Deliberately kept: a challenge that could
+					// not be reached is not a challenge that is gone.
 					if (membership != null)
 					{
 						show(new ChallengeView(membership.challenge, new ArrayList<>(), playerName.get(),
@@ -738,6 +750,34 @@ public class BotwPanel extends PluginPanel
 				});
 			}
 		};
+	}
+
+	/**
+	 * Offers to take a challenge that no longer exists off this account's list.
+	 * <p>
+	 * Also throws away anything still queued for it. Those events can never be delivered — there is
+	 * nothing left to deliver them to — and without this they would be retried every minute for as long
+	 * as the plugin is installed.
+	 */
+	private void forget(String code, ChallengeStore.Membership membership)
+	{
+		String name = membership == null ? code : membership.challenge.getName();
+
+		int answer = JOptionPane.showConfirmDialog(
+			this,
+			"\"" + name + "\" no longer exists on the server." + System.lineSeparator()
+				+ System.lineSeparator()
+				+ "Whoever ran it has deleted it. Remove it from your list?",
+			"Boss of the Week",
+			JOptionPane.YES_NO_OPTION);
+
+		if (answer == JOptionPane.YES_OPTION)
+		{
+			challenges.remove(code);
+			sender.forget(code);
+		}
+
+		showList();
 	}
 
 	private void busy(String message)

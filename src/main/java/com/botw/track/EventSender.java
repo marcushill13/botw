@@ -162,6 +162,17 @@ public class EventSender
 				BotwApi.Result<BotwApi.Snapshot> result =
 					api.submit(config.serverUrl(), code, token, batch.getValue());
 
+				if (result.isGone())
+				{
+					// The challenge has been deleted. These events have nowhere to go and never will, so
+					// retrying them every minute for as long as the plugin is installed helps nobody.
+					// The challenge itself stays on the player's list until they are asked about it.
+					log.debug("Dropping {} events for {}: the challenge no longer exists",
+						batch.getValue().size(), code);
+					outbox.forget(code);
+					continue;
+				}
+
 				if (!result.ok())
 				{
 					// Left in place deliberately. The next run tries again, and the ids mean a request

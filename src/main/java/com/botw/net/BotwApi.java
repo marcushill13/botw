@@ -60,6 +60,16 @@ public class BotwApi
 		T value;
 		String error;
 
+		/**
+		 * The service answered, and said there is no such thing.
+		 * <p>
+		 * Kept apart from every other failure because the two call for opposite responses. A challenge
+		 * that is gone should be cleared off the player's list; a challenge that merely could not be
+		 * reached — no connection, server restarting — must be left exactly where it is. Treating the
+		 * second as the first would quietly delete somebody's competition because their wifi dropped.
+		 */
+		boolean gone;
+
 		public boolean ok()
 		{
 			return error == null;
@@ -67,12 +77,17 @@ public class BotwApi
 
 		static <T> Result<T> of(T value)
 		{
-			return new Result<>(value, null);
+			return new Result<>(value, null, false);
 		}
 
 		static <T> Result<T> failed(String error)
 		{
-			return new Result<>(null, error);
+			return new Result<>(null, error, false);
+		}
+
+		static <T> Result<T> gone(String error)
+		{
+			return new Result<>(null, error, true);
 		}
 	}
 
@@ -336,7 +351,8 @@ public class BotwApi
 
 			if (!response.isSuccessful())
 			{
-				return Result.failed(messageIn(text, "The server said no (" + response.code() + ")"));
+				String message = messageIn(text, "The server said no (" + response.code() + ")");
+				return response.code() == 404 ? Result.gone(message) : Result.failed(message);
 			}
 
 			return Result.of(parse(text));

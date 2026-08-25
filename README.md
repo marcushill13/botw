@@ -48,11 +48,11 @@ RuneLite plugin only ever sees its own client, so there is no way to do that loc
 **Not sent:** anything about accounts, anything from challenges you have not joined, anything at all
 before you join one, and any kill of any other monster.
 
-**Screenshots.** A scoring drop is photographed and saved to your own screenshots folder, under the
-challenge's name. A downscaled copy is sent to whoever runs the challenge so they can verify it,
-this is what the clan would otherwise be asking you to post in Discord. Only the creator can see them;
-other participants cannot. The full-size original never leaves your machine. Both behaviours have
-their own setting and can be turned off.
+**Screenshots.** A scoring drop is photographed and saved on your own machine, under
+`.runelite/botw/screenshots`, in a folder named after the challenge. A downscaled copy is sent to
+whoever runs the challenge so they can verify it — this is what the clan would otherwise be asking
+you to post in Discord. Only the creator can see them; other participants cannot. The full-size
+original never leaves your machine. Both behaviours have their own setting and can be turned off.
 
 **Screenshots are not kept for ever.** The shared copies are deleted a month after a challenge ends,
 and deleting a challenge removes them straight away. Results are kept — an old leaderboard can still

@@ -1,5 +1,6 @@
 package com.botw.ui;
 
+import com.botw.BotwFiles;
 import com.botw.net.BotwApi;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -32,7 +33,6 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
 
 /**
  * The evidence, for whoever is running the challenge.
@@ -335,7 +335,7 @@ public class EvidencePanel extends JPanel
 
 	private File exportZip(String rsn, List<BotwApi.Shot> shots)
 	{
-		File folder = new File(new File(RuneLite.SCREENSHOT_DIR, "Boss of the Week"), "Exports");
+		File folder = BotwFiles.exports();
 		if (!folder.exists() && !folder.mkdirs())
 		{
 			log.warn("Could not make the export folder {}", folder);

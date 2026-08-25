@@ -1,5 +1,6 @@
 package com.botw.track;
 
+import com.botw.BotwFiles;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.RenderingHints;
@@ -18,7 +19,6 @@ import javax.imageio.stream.ImageOutputStream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
 import net.runelite.client.ui.DrawManager;
 import net.runelite.client.util.ImageCapture;
 
@@ -39,7 +39,6 @@ import net.runelite.client.util.ImageCapture;
 @Singleton
 public class Screenshotter
 {
-	private static final String ROOT = "Boss of the Week";
 	private static final DateTimeFormatter STAMP =
 		DateTimeFormatter.ofPattern("yyyy-MM-dd HH-mm-ss", Locale.ENGLISH);
 
@@ -99,7 +98,7 @@ public class Screenshotter
 			// alone. That is what makes it read as evidence rather than as a cropped picture.
 			BufferedImage shot = imageCapture.addClientFrame(image);
 
-			File folder = new File(new File(RuneLite.SCREENSHOT_DIR, ROOT), safe(challengeName));
+			File folder = BotwFiles.screenshots(safe(challengeName));
 			if (!folder.exists() && !folder.mkdirs())
 			{
 				log.warn("Could not make the screenshot folder {}", folder);

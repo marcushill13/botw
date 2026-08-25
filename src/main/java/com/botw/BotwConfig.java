@@ -10,7 +10,7 @@ public interface BotwConfig extends Config
 	@ConfigItem(
 		keyName = "screenshotDrops",
 		name = "Screenshot scoring drops",
-		description = "Saves a picture to your own screenshots folder whenever a drop scores you points.",
+		description = "Saves a picture under .runelite/botw whenever a drop scores you points.",
 		position = 0
 	)
 	default boolean screenshotDrops()

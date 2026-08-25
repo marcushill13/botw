@@ -1,0 +1,61 @@
+# Posts to Discord when the Plugin Hub starts serving a new commit of this plugin.
+#
+# The hub is somebody else's repository, so nothing there can notify us. Instead this checks the one
+# file that changes when a release goes live — plugins/botw, which pins the commit — and posts
+# when it moves. See scripts/announce-release.mjs for what goes in the message.
+#
+# Setup, once: create a webhook on the Discord channel (Channel > Edit Channel > Integrations >
+# Webhooks > New Webhook), copy its URL, and add it here as a repository secret named
+# DISCORD_WEBHOOK under Settings > Secrets and variables > Actions. The URL is never printed by this
+# workflow and nobody but GitHub and Discord ever sees it.
+name: Announce release
+
+on:
+  schedule:
+    # Every half hour. A hub merge is not urgent, and this is cheap.
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Print the announcement instead of posting it
+        type: boolean
+        default: true
+      preview_commit:
+        description: Rehearse the announcement for this commit, as though the hub had it (dry run only)
+        type: string
+        required: false
+
+permissions:
+  # To move the tag recording what has been announced.
+  contents: write
+
+concurrency:
+  group: announce-release
+  cancel-in-progress: false
+
+jobs:
+  announce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The announcement is built from the commit range, so the history has to be here.
+          fetch-depth: 0
+          fetch-tags: true
+
+      - id: announce
+        env:
+          PLUGIN: botw
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          # A scheduled run is the real thing; a hand-started one defaults to a rehearsal.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+          PREVIEW_COMMIT: ${{ inputs.preview_commit }}
+        run: node scripts/announce-release.mjs
+
+      - name: Record what was announced
+        if: steps.announce.outputs.announced != ''
+        env:
+          ANNOUNCED: ${{ steps.announce.outputs.announced }}
+        run: |
+          git tag -f announced "$ANNOUNCED"
+          git push -f origin refs/tags/announced

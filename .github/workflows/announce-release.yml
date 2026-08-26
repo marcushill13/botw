@@ -12,8 +12,10 @@ name: Announce release
 
 on:
   schedule:
-    # Every half hour. A hub merge is not urgent, and this is cheap.
-    - cron: '*/30 * * * *'
+    # Twice an hour, deliberately off the hour. GitHub queues scheduled runs and drops them under
+    # load, and :00 and :30 are the two most contended minutes there are — the first release this
+    # watched merged at 12:14 and the run booked for 12:00 never happened at all.
+    - cron: '9,39 * * * *'
   workflow_dispatch:
     inputs:
       dry_run:

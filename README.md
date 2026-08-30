@@ -34,6 +34,20 @@ it, so it does not come undone at their next kill.
 A countdown to the start, which becomes a countdown to the end. The boss, the full points list, and a
 leaderboard that keeps itself up to date. Your own points, and what they are made of.
 
+## Pets
+
+Pets are counted, and it does not matter where yours ends up. A pet is the one drop the game never
+puts on the floor — it hands it to you directly, so it is not part of the loot and cannot be read like
+the rest of it. The plugin reads the message instead, which covers all three endings: following you
+home, into your inventory, or straight to the bank because your inventory was full and you already had
+one out.
+
+The message says a pet dropped without saying which, so the plugin takes it to be the pet your
+challenge counts, and only when a kill of that boss happened within the minute. A Beaver on a Vorkath
+week is not Vorki.
+
+Duplicates count. The fiftieth Vorki scores what the first did, the same as a second visage would.
+
 ## What this sends, and to whom
 
 The plugin talks to a small service so that everyone in a challenge can see the same leaderboard. A

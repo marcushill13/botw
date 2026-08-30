@@ -8,8 +8,10 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,10 @@ import lombok.extern.slf4j.Slf4j;
  * the pets and the visages but also lets the odd bolt tip through, so the create screen lets the list
  * be edited. Saving the creator typing out sixteen items matters more than being right about the
  * seventeenth.
+ * <p>
+ * The pet names are kept separately from the bosses because a pet is not announced like other loot.
+ * The game says one has dropped without saying which, so the tracker has to work that out from the
+ * challenge, and this is the list it works it out against. See {@link #petIn}.
  */
 @Slf4j
 @Singleton
@@ -35,12 +41,34 @@ public class BossDrops
 	private final List<Boss> bosses;
 	private final String attribution;
 
+	/** Lowercased, because a rule's name is typed by the creator and a drop's comes from the game. */
+	private final Set<String> pets;
+
 	@Inject
 	private BossDrops(Gson gson)
 	{
 		File file = load(gson);
 		this.bosses = file.bosses == null ? Collections.emptyList() : file.bosses;
 		this.attribution = file.attribution == null ? "" : file.attribution;
+		this.pets = lowercased(file.pets);
+	}
+
+	private static Set<String> lowercased(List<String> names)
+	{
+		Set<String> set = new HashSet<>();
+
+		if (names != null)
+		{
+			for (String name : names)
+			{
+				if (name != null && !name.trim().isEmpty())
+				{
+					set.add(name.trim().toLowerCase(Locale.ROOT));
+				}
+			}
+		}
+
+		return set;
 	}
 
 	private static File load(Gson gson)
@@ -94,6 +122,63 @@ public class BossDrops
 		}
 
 		return matches;
+	}
+
+	/** Whether this item is somebody's pet. Every pet in the game, not only the ones bosses drop. */
+	public boolean isPet(String itemName)
+	{
+		return itemName != null && pets.contains(itemName.trim().toLowerCase(Locale.ROOT));
+	}
+
+	/**
+	 * The pet this challenge counts, or null if it counts none.
+	 * <p>
+	 * Needed because the game announces a pet without naming it — "you have a funny feeling like you're
+	 * being followed" and nothing more. What dropped therefore has to be worked out rather than read,
+	 * and the challenge's own list is what it is worked out from: a Vorkath challenge that scores Vorki
+	 * can only have meant Vorki.
+	 * <p>
+	 * Reading the challenge rather than the boss is deliberate. Half the raid bosses came out of the
+	 * wiki with no uniques at all, so their creators type the pet in by hand — and going by the boss
+	 * would leave exactly those challenges unable to score the pet they were set up for.
+	 */
+	public String petIn(Challenge challenge)
+	{
+		return petIn(challenge, pets);
+	}
+
+	/**
+	 * @param pets lowercased pet names
+	 * @return the one pet the challenge scores, or null where there is no single answer
+	 */
+	static String petIn(Challenge challenge, Set<String> pets)
+	{
+		if (challenge == null || challenge.getDrops() == null)
+		{
+			return null;
+		}
+
+		String found = null;
+
+		for (DropRule rule : challenge.getDrops())
+		{
+			if (rule == null || rule.getName() == null || rule.getPoints() <= 0
+				|| !pets.contains(rule.getName().trim().toLowerCase(Locale.ROOT)))
+			{
+				continue;
+			}
+
+			// Two pets on one challenge is not something a boss can produce, and guessing between them
+			// would be inventing a drop nobody had. Better to score nothing than the wrong thing.
+			if (found != null)
+			{
+				return null;
+			}
+
+			found = rule.getName();
+		}
+
+		return found;
 	}
 
 	public Boss byName(String name)
@@ -176,6 +261,7 @@ public class BossDrops
 		String source;
 		String attribution;
 		String generatedAt;
+		List<String> pets = new ArrayList<>();
 		List<Boss> bosses = new ArrayList<>();
 	}
 }

@@ -25,6 +25,19 @@ import { fileURLToPath } from 'node:url';
 const WIKI = 'https://oldschool.runescape.wiki/api.php';
 
 /**
+ * Every pet in the game, by name.
+ *
+ * Bundled because a pet is the one drop the game does not name when it happens — it says a pet has
+ * dropped and leaves the plugin to work out which. The tracker works that out from the challenge's own
+ * list, and this is what it checks that list against. See BossDrops.petIn.
+ *
+ * The whole category rather than the boss pets alone: Tangleroot and Herbi are dropped by things
+ * people run challenges on, and a skilling pet in the list costs nothing, since a name only matters
+ * once a creator has put it on a challenge and priced it.
+ */
+const PETS_CATEGORY = 'Category:Pets';
+
+/**
  * Item ids, resolved here rather than in the plugin.
  *
  * The plugin's own item search reads the price API, which only knows tradeable things — so every pet
@@ -300,6 +313,44 @@ function uniquesOf(drops)
  * Name to item id, lowercased. Where a name has several ids — a pet with a variant per state — the
  * lowest is taken, which is the one the game shows.
  */
+/**
+ * The names in the pets category, as a sorted list.
+ *
+ * Titles rather than item names, which is the same thing here — the wiki names a pet's page after the
+ * pet. Anything bracketed is a disambiguation page or a variant rather than a pet, and goes.
+ */
+async function petNames()
+{
+	const names = [];
+	let cont;
+
+	do
+	{
+		const url = `${WIKI}?action=query&list=categorymembers&cmtitle=${encodeURIComponent(PETS_CATEGORY)}`
+			+ `&cmnamespace=0&cmlimit=500&format=json${cont ? `&cmcontinue=${encodeURIComponent(cont)}` : ''}`;
+
+		const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+		if (!response.ok)
+		{
+			throw new Error(`${PETS_CATEGORY}: HTTP ${response.status}`);
+		}
+
+		const body = await response.json();
+		for (const member of body.query?.categorymembers ?? [])
+		{
+			if (member.title && !member.title.includes('('))
+			{
+				names.push(member.title);
+			}
+		}
+
+		cont = body.continue?.cmcontinue;
+	}
+	while (cont);
+
+	return [...new Set(names)].sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase()));
+}
+
 async function itemIds()
 {
 	const response = await fetch(ITEMS, { headers: { 'User-Agent': USER_AGENT } });
@@ -333,6 +384,9 @@ async function main()
 {
 	const ids = await itemIds();
 	console.log(`Resolved ${ids.size} item names`);
+
+	const pets = await petNames();
+	console.log(`Found ${pets.length} pets`);
 
 	const bosses = JSON.parse(
 		await fs.readFile(path.join(path.dirname(fileURLToPath(import.meta.url)), 'bosses.json'), 'utf8'));
@@ -399,10 +453,11 @@ async function main()
 
 	await fs.mkdir(path.dirname(OUT), { recursive: true });
 	await fs.writeFile(OUT, JSON.stringify({
-		dataVersion: 1,
+		dataVersion: 2,
 		source: 'https://oldschool.runescape.wiki',
 		attribution: 'Drop data from the OSRS Wiki, CC BY-NC-SA 3.0',
 		generatedAt: new Date().toISOString(),
+		pets,
 		bosses: out
 	}, null, '\t') + '\n');
 

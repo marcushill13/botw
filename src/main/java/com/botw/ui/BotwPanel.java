@@ -10,6 +10,7 @@ import com.botw.track.EventSender;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Rectangle;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.Scrollable;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
@@ -54,7 +56,41 @@ public class BotwPanel extends PluginPanel
 	/** The logged-in name, which is who points are reported as. Null until logged in. */
 	private Supplier<String> playerName = () -> null;
 
-	private final JPanel content = new JPanel();
+	private final JPanel content = new SidebarContent();
+
+	/** Keep every screen within the viewport when a vertical scrollbar takes up sidebar width. */
+	static final class SidebarContent extends JPanel implements Scrollable
+	{
+		@Override
+		public Dimension getPreferredScrollableViewportSize()
+		{
+			return getPreferredSize();
+		}
+
+		@Override
+		public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction)
+		{
+			return 16;
+		}
+
+		@Override
+		public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction)
+		{
+			return Math.max(16, visibleRect.height - 16);
+		}
+
+		@Override
+		public boolean getScrollableTracksViewportWidth()
+		{
+			return true;
+		}
+
+		@Override
+		public boolean getScrollableTracksViewportHeight()
+		{
+			return false;
+		}
+	}
 
 	@Inject
 	private BotwPanel(

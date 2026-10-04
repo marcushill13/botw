@@ -2,11 +2,10 @@ name = "botw"
 main = "src/index.js"
 compatibility_date = "2026-01-01"
 
-# Screenshots are cleared out a month after a challenge ends; see SHOT_RETENTION_DAYS. Daily is plenty
-# for something measured in months, and 04:00 UTC is the small hours in Britain and the quiet end of
-# the evening in Australia.
+# One Cron Trigger serves the Discord board each minute and prunes expired screenshots
+# at 04:00 UTC. This fits the Workers Free per-account trigger limit.
 [triggers]
-crons = ["0 4 * * *", "* * * * *"]
+crons = ["* * * * *"]
 
 # Created with `wrangler d1 create botw`. The id comes from `wrangler d1 list` if it is ever lost.
 [[d1_databases]]

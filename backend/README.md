@@ -54,8 +54,10 @@ Worker and its D1 database untouched while trying it out:
 
 Run `node backend/test/discord.test.mjs` from the repository root for the backend's local behavior
 checks. Before a later production rollout, apply `migrations/002-discord-boards.sql` to the live D1
-database and deploy the Worker, then release the plugin update. Do not point the test plugin at the
-live service: the older live Worker does not have the Discord endpoint.
+database and deploy the Worker, then release the plugin update. The single minute Cron Trigger also
+handles daily screenshot cleanup at 04:00 UTC, keeping this Worker within the Workers Free account
+limit. If an older `wrangler.test.toml` still lists two crons, change its `crons` line to
+`["* * * * *"]` before redeploying staging.
 
 ## What it does
 

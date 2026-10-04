@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="610" viewBox="0 0 1000 610">
+  <rect width="1000" height="610" fill="#202127"/>
+  <rect x="0" y="0" width="236" height="610" fill="#2b2d35"/>
+  <text x="28" y="53" fill="#f3f4f7" font-family="Arial,sans-serif" font-size="20" font-weight="bold">Clan server</text>
+  <line x1="0" y1="74" x2="236" y2="74" stroke="#202127"/>
+  <text x="26" y="119" fill="#9da0a9" font-family="Arial,sans-serif" font-size="13" font-weight="bold">EVENTS</text>
+  <rect x="12" y="137" width="212" height="42" rx="7" fill="#40434e"/>
+  <text x="28" y="164" fill="#f2f3f7" font-family="Arial,sans-serif" font-size="16">#  botw-leaderboard</text>
+  <rect x="236" y="0" width="764" height="69" fill="#30323b"/>
+  <text x="260" y="44" fill="#f3f4f7" font-family="Arial,sans-serif" font-size="18" font-weight="bold">#  botw-leaderboard</text>
+  <text x="264" y="120" fill="#f0f1f4" font-family="Arial,sans-serif" font-size="18" font-weight="bold">BOTW</text>
+  <text x="326" y="120" fill="#9699a3" font-family="Arial,sans-serif" font-size="13">APP  ·  Today at 11:32 AM</text>
+  <rect x="263" y="139" width="667" height="409" rx="6" fill="#282a32"/>
+  <rect x="263" y="139" width="5" height="409" rx="2" fill="#9f7839"/>
+  <text x="287" y="178" fill="#dfbc68" font-family="Arial,sans-serif" font-size="17" font-weight="bold">⚔  BOSS OF THE WEEK · HISCORES</text>
+  <text x="287" y="213" fill="#f0e4c5" font-family="Arial,sans-serif" font-size="16" font-weight="bold">Vorkath Week</text>
+  <text x="287" y="242" fill="#c8c9ce" font-family="Arial,sans-serif" font-size="15">Boss: <tspan fill="#f0e4c5" font-weight="bold">Vorkath</tspan>  •  Code: <tspan fill="#f0e4c5">ABC234</tspan></text>
+  <rect x="286" y="261" width="602" height="205" rx="5" fill="#1a1b20"/>
+  <g fill="#e5d3a9" font-family="monospace" font-size="18">
+    <text x="306" y="292">RANK  ADVENTURER       PTS</text>
+    <text x="306" y="328">  1   Iron Willow         1240</text>
+    <text x="306" y="359">  2   Rune Archer           980</text>
+    <text x="306" y="390">  3   Vorki Hunter          725</text>
+    <text x="306" y="421">  4   Clan Hero             410</text>
+  </g>
+  <text x="286" y="501" fill="#c8c9ce" font-family="Arial,sans-serif" font-size="15">⏳ Ends in 3 days</text>
+  <text x="286" y="529" fill="#8c8f99" font-family="Arial,sans-serif" font-size="12">One board, always current · Last score change 2026-10-04T11:32:00.000Z</text>
+  <text x="262" y="583" fill="#989ba5" font-family="Arial,sans-serif" font-size="13">Illustrative example · scores and names shown here are sample data</text>
+</svg>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { hiscores, syncDiscordBoard, validWebhookUrl } from '../src/discord.js';
+import { connectDiscord, hiscores, syncDiscordBoard, validWebhookUrl } from '../src/discord.js';
 
 const webhook = 'https://discord.com/api/webhooks/12345/test_token';
 
@@ -28,6 +28,28 @@ test('renders readable OSRS ranks without pinging Discord users', () =>
 	assert.match(message.embeds[0].description, /2   everyone\s+35/);
 	assert.equal(message.embeds[0].color, 0x9f7839);
 	assert.deepEqual(message.allowed_mentions, { parse: [] });
+});
+
+test('reports Discord status without exposing the webhook token', async () =>
+{
+	const env = { DB: { prepare(sql)
+	{
+		return { bind() { return this; }, first: async () =>
+			sql.includes('creator_token') ? { creator_token: 'creator' } : null };
+	} } };
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = async () => ({ ok: false, status: 403 });
+	try
+	{
+		const result = await connectDiscord('ABC234', webhook, 'creator', env, async () => []);
+		assert.equal(result.status, 400);
+		assert.match(result.error, /HTTP 403/);
+		assert.doesNotMatch(result.error, /test_token/);
+	}
+	finally
+	{
+		globalThis.fetch = originalFetch;
+	}
 });
 
 test('posts once, edits the same message after a score change, then stays quiet', async () =>

@@ -167,6 +167,42 @@ public class BotwApi
 			.header("X-Creator-Token", creatorToken));
 	}
 
+	/** The webhook URL goes only to the BOTW service; it must never appear in public challenge data. */
+	public Result<Boolean> connectDiscord(String baseUrl, String code, String creatorToken, String webhookUrl)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("webhookUrl", webhookUrl);
+		return sendDiscord(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "discord"))
+			.put(RequestBody.create(JSON, gson.toJson(body)))
+			.header("X-Creator-Token", creatorToken));
+	}
+
+	public Result<Boolean> removeDiscord(String baseUrl, String code, String creatorToken)
+	{
+		return sendDiscord(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, "discord"))
+			.delete()
+			.header("X-Creator-Token", creatorToken));
+	}
+
+	private Result<Boolean> sendDiscord(Request.Builder builder)
+	{
+		try (Response response = httpClient.newCall(builder.build()).execute())
+		{
+			ResponseBody body = response.body();
+			String text = body == null ? "" : body.string();
+			return response.isSuccessful()
+				? Result.of(Boolean.TRUE)
+				: Result.failed(messageIn(text, "Discord setup failed (" + response.code() + ")"));
+		}
+		catch (IOException e)
+		{
+			// The URL is a secret; do not log the request or exception.
+			return Result.failed("Could not reach the server");
+		}
+	}
+
 	/**
 	 * Puts someone on the leaderboard who will never report anything themselves.
 	 * <p>

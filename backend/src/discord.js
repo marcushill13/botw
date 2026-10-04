@@ -51,7 +51,7 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 	}
 
 	const state = JSON.stringify({
-		style: 2,
+		style: 3,
 		name: challenge.name,
 		boss: challenge.boss,
 		code: challenge.code,

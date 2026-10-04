@@ -4,7 +4,7 @@
  */
 
 export const IMAGE_ROWS = 25;
-const WIDTH = 520;
+const WIDTH = 440;
 const PALETTE = [
 	[25, 24, 20], [48, 44, 34], [78, 70, 52], [121, 93, 51],
 	[155, 119, 65], [202, 170, 109], [219, 190, 129], [226, 201, 147],
@@ -192,24 +192,27 @@ function png(pixels, height)
 export function boardImage(challenge, leaderboard)
 {
 	const rows = leaderboard.slice(0, IMAGE_ROWS);
-	const height = 285 + Math.max(1, rows.length) * 25;
+	const height = 260 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
 	// Rough stone framing and an uneven, flecked sheet of parchment.
 	for (let y = 0; y < height; y++)
 	{
+		const left = 24 + (y * 37 % 11) / 3 | 0;
+		const right = WIDTH - 24 - (y * 19 % 13) / 3 | 0;
+		const paper = y >= 24 && y < height - 25;
+		const grainRow = (y & 31) * 32;
+		const pixelRow = y * WIDTH;
 		for (let x = 0; x < WIDTH; x++)
 		{
-			const grain = GRAIN[(y & 31) * 32 + (x & 31)];
+			const grain = GRAIN[grainRow + (x & 31)];
 			let colour = grain < 22 ? 1 : grain < 25 ? 2 : 0;
-			const left = 24 + (y * 37 % 11) / 3 | 0;
-			const right = WIDTH - 24 - (y * 19 % 13) / 3 | 0;
-			if (y >= 24 && y < height - 25 && x >= left && x < right)
+			if (paper && x >= left && x < right)
 			{
 				colour = x - left < 12 || right - x < 12 ? 4
 					: grain < 3 ? 8 : grain < 30 ? 7 : 6;
 			}
-			pixels[y * WIDTH + x] = colour;
+			pixels[pixelRow + x] = colour;
 		}
 	}
 	// Rolled top and bottom edges, with worn highlights.
@@ -225,25 +228,25 @@ export function boardImage(challenge, leaderboard)
 	write(pixels, height, title, (WIDTH - textWidth(title, 3)) / 2, 58, 9, 3);
 	const subtitle = `${String(challenge.boss ?? 'BOSS').slice(0, 20)} HISCORES`;
 	write(pixels, height, subtitle, (WIDTH - textWidth(subtitle, 2)) / 2, 89, 10);
-	const event = String(challenge.name ?? '').slice(0, 34);
+	const event = String(challenge.name ?? '').slice(0, 32);
 	write(pixels, height, event, (WIDTH - textWidth(event, 2)) / 2, 120, 9);
-	rect(pixels, height, 55, 146, WIDTH - 110, 2, 4);
-	write(pixels, height, 'RANK', 61, 159);
-	write(pixels, height, 'NAME', 138, 159);
-	write(pixels, height, 'POINTS', 392, 159);
-	rect(pixels, height, 55, 178, WIDTH - 110, 1, 4);
+	rect(pixels, height, 42, 146, WIDTH - 84, 2, 4);
+	write(pixels, height, 'RANK', 47, 159);
+	write(pixels, height, 'NAME', 117, 159);
+	write(pixels, height, 'POINTS', 340, 159);
+	rect(pixels, height, 42, 178, WIDTH - 84, 1, 4);
 
 	if (!rows.length)
 	{
-		write(pixels, height, 'AWAITING CHALLENGERS', 115, 198, 10);
+		write(pixels, height, 'AWAITING CHALLENGERS', 95, 194, 10);
 	}
 	for (let i = 0; i < rows.length; i++)
 	{
-		const y = 194 + i * 25;
-		write(pixels, height, String(i + 1).padStart(2), 70, y, i < 3 ? 11 : 9);
-		write(pixels, height, String(rows[i].rsn ?? '').slice(0, 12), 138, y);
+		const y = 190 + i * 21;
+		write(pixels, height, String(i + 1).padStart(2), 52, y, i < 3 ? 11 : 9);
+		write(pixels, height, String(rows[i].rsn ?? '').slice(0, 12), 117, y);
 		const points = Number(rows[i].points ?? 0).toLocaleString('en-US');
-		write(pixels, height, points, 460 - textWidth(points, 2), y, i < 3 ? 11 : 9);
+		write(pixels, height, points, 404 - textWidth(points, 2), y, i < 3 ? 11 : 9);
 	}
 
 	const note = leaderboard.length > IMAGE_ROWS

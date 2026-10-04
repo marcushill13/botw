@@ -1,4 +1,5 @@
 /** The Discord message is owned by the service, so it keeps updating while RuneLite is closed. */
+import { boardImage, IMAGE_ROWS } from './board-image.js';
 
 const DISCORD_COLOUR = 0x9f7839;
 const MAX_ROWS = 100;
@@ -37,16 +38,12 @@ function safeText(value)
 export function hiscores(challenge, leaderboard, now = Date.now())
 {
 	const ranked = leaderboard.slice(0, MAX_ROWS);
-	const lines = ['RANK  ADVENTURER       PTS'];
-	for (let i = 0; i < ranked.length; i++)
+	const lines = ['RANK  NAME             PTS'];
+	for (let i = IMAGE_ROWS; i < ranked.length; i++)
 	{
 		const name = String(ranked[i].rsn ?? '').replace(/[^A-Za-z0-9 -]/g, '').slice(0, 12);
 		const points = String(ranked[i].points ?? 0);
 		lines.push(`${String(i + 1).padStart(3)}   ${name.padEnd(12)}  ${points.padStart(7)}`);
-	}
-	if (!ranked.length)
-	{
-		lines.push('      Awaiting challengers...');
 	}
 	if (leaderboard.length > MAX_ROWS)
 	{
@@ -54,6 +51,7 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 	}
 
 	const state = JSON.stringify({
+		style: 2,
 		name: challenge.name,
 		boss: challenge.boss,
 		code: challenge.code,
@@ -61,30 +59,53 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 		rows: leaderboard.map(row => [row.rsn, row.points])
 	});
 	const description = `**${safeText(challenge.name).slice(0, 120)}**\n`
-		+ `Boss: **${safeText(challenge.boss).slice(0, 120)}**  •  Code: \`${safeText(challenge.code)}\`\n\n`
-		+ `\`\`\`text\n${lines.join('\n')}\n\`\`\`\n`
+		+ `Boss: **${safeText(challenge.boss).slice(0, 120)}**  •  Code: \`${safeText(challenge.code)}\`\n`
 		+ `⏳ Ends <t:${Math.floor(challenge.ends_at / 1000)}:R>`;
+	const embeds = [{
+		title: '⚔️ BOSS OF THE WEEK · HISCORES',
+		description,
+		color: DISCORD_COLOUR,
+		image: { url: 'attachment://hiscores.png' },
+		footer: { text: `One board, always current · Last score change ${new Date(now).toISOString()}` }
+	}];
+	if (ranked.length > IMAGE_ROWS || leaderboard.length > MAX_ROWS)
+	{
+		embeds.push({
+			title: 'Further rankings',
+			description: `\`\`\`text\n${lines.join('\n')}\n\`\`\``
+		});
+	}
 
 	return {
 		state,
 		message: {
-			embeds: [{
-				title: '⚔️ BOSS OF THE WEEK · HISCORES',
-				description,
-				color: DISCORD_COLOUR,
-				footer: { text: `One board, always current · Last score change ${new Date(now).toISOString()}` }
-			}],
+			embeds,
 			allowed_mentions: { parse: [] }
 		}
 	};
 }
 
-async function discordRequest(url, method, message)
+async function discordRequest(url, method, message, picture)
 {
+	let body;
+	let headers;
+	if (picture)
+	{
+		const form = new FormData();
+		form.set('payload_json', JSON.stringify({ ...message,
+			attachments: [{ id: 0, filename: 'hiscores.png', description: 'Boss of the Week Hiscores' }] }));
+		form.set('files[0]', new Blob([picture], { type: 'image/png' }), 'hiscores.png');
+		body = form;
+	}
+	else if (message)
+	{
+		headers = { 'Content-Type': 'application/json' };
+		body = JSON.stringify(message);
+	}
 	const response = await fetch(url, {
 		method,
-		headers: message ? { 'Content-Type': 'application/json' } : undefined,
-		body: message ? JSON.stringify(message) : undefined,
+		headers,
+		body,
 		// Cloudflare Workers does not support redirect: 'error'. Manual prevents
 		// following a redirect, and the non-2xx check below rejects its response.
 		redirect: 'manual'
@@ -201,7 +222,8 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 		return;
 	}
 
-	const { state, message } = hiscores(board, await leaderboardFor(code, env));
+	const leaderboard = await leaderboardFor(code, env);
+	const { state, message } = hiscores(board, leaderboard);
 	if (board.message_id && board.last_state === state)
 	{
 		return;
@@ -220,7 +242,8 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 		}
 		try
 		{
-			const result = await discordRequest(`${board.webhook_url}?wait=true`, 'POST', message);
+			const picture = await boardImage(board, leaderboard);
+			const result = await discordRequest(`${board.webhook_url}?wait=true`, 'POST', message, picture);
 			await env.DB.prepare(
 				'UPDATE discord_boards SET message_id = ?, last_state = ? WHERE challenge_code = ?')
 				.bind(result.id, state, code).run();
@@ -235,7 +258,8 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 		return;
 	}
 
-	await discordRequest(`${board.webhook_url}/messages/${board.message_id}`, 'PATCH', message);
+	const picture = await boardImage(board, leaderboard);
+	await discordRequest(`${board.webhook_url}/messages/${board.message_id}`, 'PATCH', message, picture);
 	await env.DB.prepare(
 		'UPDATE discord_boards SET last_state = ? WHERE challenge_code = ? AND message_id = ?')
 		.bind(state, code, board.message_id).run();

@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS challenges (
 	created_at     INTEGER NOT NULL
 );
 
+-- The webhook URL is a secret. Never include it in a public challenge response.
+-- The message id lets the worker edit one message rather than posting a new one each refresh.
+CREATE TABLE IF NOT EXISTS discord_boards (
+	challenge_code TEXT PRIMARY KEY REFERENCES challenges(code) ON DELETE CASCADE,
+	webhook_url    TEXT NOT NULL,
+	message_id     TEXT,
+	last_state     TEXT
+);
+
 CREATE TABLE IF NOT EXISTS participants (
 	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
 	rsn            TEXT NOT NULL,

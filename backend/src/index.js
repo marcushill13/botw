@@ -17,6 +17,8 @@
  * every score be recomputed when the creator inevitably fixes a points value mid-week.
  */
 
+import { connectDiscord, removeDiscord, syncDiscordBoards } from './discord.js';
+
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const CODE_LENGTH = 6;
@@ -53,7 +55,14 @@ export default {
 	 */
 	async scheduled(event, env, ctx)
 	{
-		ctx.waitUntil(pruneShots(env));
+		if (event.cron === '0 4 * * *')
+		{
+			ctx.waitUntil(pruneShots(env));
+		}
+		if (event.cron === '* * * * *')
+		{
+			ctx.waitUntil(syncDiscordBoards(env, leaderboardFor));
+		}
 	},
 
 	async fetch(request, env)
@@ -100,6 +109,21 @@ async function route(request, env)
 	if (byCode && request.method === 'DELETE')
 	{
 		return withCors(await deleteChallenge(byCode[1].toUpperCase(), request, env));
+	}
+
+	const discord = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/discord$/);
+	if (discord && request.method === 'PUT')
+	{
+		const body = await readJson(request);
+		const result = await connectDiscord(discord[1].toUpperCase(), body?.webhookUrl,
+			request.headers.get('X-Creator-Token'), env, leaderboardFor);
+		return withCors(json(result.error ? { error: result.error } : { enabled: true }, result.status));
+	}
+	if (discord && request.method === 'DELETE')
+	{
+		const result = await removeDiscord(discord[1].toUpperCase(),
+			request.headers.get('X-Creator-Token'), env);
+		return withCors(json(result.error ? { error: result.error } : { enabled: false }, result.status));
 	}
 
 	const join = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/join$/);
@@ -283,6 +307,8 @@ async function deleteChallenge(code, request, env)
 		return json({ error: 'Only the creator can delete this challenge' }, 403);
 	}
 
+	// Removing the challenge also retires its Discord message.
+	await removeDiscord(code, challenge.creator_token, env);
 	await env.DB.batch([
 		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM events WHERE challenge_code = ?').bind(code),

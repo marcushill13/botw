@@ -18,6 +18,22 @@ remember.
 
 Joining is that code and a button.
 
+## Discord hiscores (test branch)
+
+The creator can add a webhook for a Discord channel in the BOTW plugin settings, open a challenge,
+and select **Post to Discord**. The service posts an original parchment-style Hiscores image with
+**Rank / Name / Points** and edits that same message and image when points or ranks change,
+checking about once a minute. It keeps working while the creator's RuneLite client is closed.
+The parchment is an image attachment, so it can be opened larger in Discord. The first 25 names
+appear on it; further ranks appear as text beneath it, up to 100.
+
+The creator can pin the message in the channel. **Remove Discord** stops updates and removes the
+message. Keep the webhook URL private; anyone with the URL can post to that channel. The plugin sends
+it only to the BOTW service, and participants do not receive it in challenge responses.
+
+This feature is on a review branch. See [the staging instructions](backend/README.md#testing-discord-without-updating-the-live-service)
+to try it with a separate Worker and database before changing the live service.
+
 ## Players who cannot run the plugin
 
 Mobile has no plugins, so those kills can never be counted. They do not have to sit the competition

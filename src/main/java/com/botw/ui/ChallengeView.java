@@ -95,7 +95,7 @@ public class ChallengeView extends JPanel
 		JPanel evidence)
 	{
 		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, evidence,
-			null, null, null, null, null);
+			null, null, null, null, null, null, null);
 	}
 
 	/**
@@ -116,7 +116,9 @@ public class ChallengeView extends JPanel
 		Runnable onDelete,
 		LeaderboardEditor editor,
 		Runnable onPreview,
-		Runnable onEndPreview)
+		Runnable onEndPreview,
+		Runnable onDiscordConnect,
+		Runnable onDiscordRemove)
 	{
 		this.itemManager = itemManager;
 		this.onBack = onBack;
@@ -168,6 +170,23 @@ public class ChallengeView extends JPanel
 		{
 			body.add(Cards.gap(6));
 			body.add(creatorControls(challenge, onEdit, onDelete, onPreview));
+		}
+		if (onDiscordConnect != null)
+		{
+			body.add(Cards.gap(6));
+			JPanel discordRow = new JPanel(new java.awt.GridLayout(1, 2, 4, 0));
+			discordRow.setBackground(Theme.BACKGROUND);
+			discordRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+			JButton connect = Cards.button("Post to Discord");
+			connect.setToolTipText("Post one hiscores message and keep its scores updated");
+			connect.addActionListener(event -> onDiscordConnect.run());
+			discordRow.add(connect);
+			JButton remove = Cards.button("Remove Discord");
+			remove.setToolTipText("Stop updates and remove the Discord message");
+			remove.addActionListener(event -> onDiscordRemove.run());
+			discordRow.add(remove);
+			discordRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, discordRow.getPreferredSize().height));
+			body.add(discordRow);
 		}
 
 		body.add(Cards.gap(10));

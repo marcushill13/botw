@@ -709,7 +709,58 @@ public class BotwPanel extends PluginPanel
 					creatorToken == null ? null : () -> delete(code),
 					creatorToken == null ? null : leaderboardEditor(code, creatorToken),
 					canPreview ? () -> openChallenge(code, true) : null,
-					asPlayer ? () -> openChallenge(code, false) : null));
+					asPlayer ? () -> openChallenge(code, false) : null,
+					creatorToken == null ? null : () -> connectDiscord(code, creatorToken),
+					creatorToken == null ? null : () -> removeDiscord(code, creatorToken)));
+			});
+		});
+	}
+
+	private void connectDiscord(String code, String creatorToken)
+	{
+		String webhookUrl = config.discordWebhookUrl().trim();
+		if (webhookUrl.isEmpty())
+		{
+			Cards.warn(this, "Paste your Discord channel webhook URL into the BOTW plugin settings first.");
+			return;
+		}
+
+		int answer = JOptionPane.showConfirmDialog(this,
+			"Post this challenge's hiscores to the channel linked in your BOTW settings?"
+				+ System.lineSeparator() + "The same message will update as scores change.",
+			"Boss of the Week", JOptionPane.YES_NO_OPTION);
+		if (answer == JOptionPane.YES_OPTION)
+		{
+			runDiscord(code, "Posting hiscores…",
+				() -> api.connectDiscord(config.serverUrl(), code, creatorToken, webhookUrl),
+				"Hiscores are posted. You can pin the message in Discord.");
+		}
+	}
+
+	private void removeDiscord(String code, String creatorToken)
+	{
+		int answer = JOptionPane.showConfirmDialog(this,
+			"Stop Discord updates and remove this challenge's hiscores message?",
+			"Boss of the Week", JOptionPane.YES_NO_OPTION);
+		if (answer == JOptionPane.YES_OPTION)
+		{
+			runDiscord(code, "Removing Discord hiscores…",
+				() -> api.removeDiscord(config.serverUrl(), code, creatorToken),
+				"Discord updates have stopped.");
+		}
+	}
+
+	private void runDiscord(String code, String message,
+		Supplier<BotwApi.Result<Boolean>> call, String success)
+	{
+		busy(message);
+		executor.execute(() ->
+		{
+			BotwApi.Result<Boolean> result = call.get();
+			SwingUtilities.invokeLater(() ->
+			{
+				Cards.warn(this, result.ok() ? success : result.getError());
+				openChallenge(code);
 			});
 		});
 	}

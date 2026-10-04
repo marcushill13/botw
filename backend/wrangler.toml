@@ -6,7 +6,7 @@ compatibility_date = "2026-01-01"
 # for something measured in months, and 04:00 UTC is the small hours in Britain and the quiet end of
 # the evening in Australia.
 [triggers]
-crons = ["0 4 * * *"]
+crons = ["0 4 * * *", "* * * * *"]
 
 # Created with `wrangler d1 create botw`. The id comes from `wrangler d1 list` if it is ever lost.
 [[d1_databases]]

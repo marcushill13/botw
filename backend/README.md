@@ -33,6 +33,30 @@ cd backend && wrangler deploy
 
 Deployed at **https://botw.marcushill3313.workers.dev** — that is the URL the plugin talks to.
 
+## Testing Discord without updating the live service
+
+The Discord feature needs both this Worker and the plugin from the review branch. Keep the live
+Worker and its D1 database untouched while trying it out:
+
+1. Create a separate D1 database: `wrangler d1 create botw-discord-test`.
+2. Copy `wrangler.toml` to `wrangler.test.toml` in this directory. Set `name = "botw-discord-test"`,
+   `database_name = "botw-discord-test"`, and replace `database_id` with the new database's ID.
+   This test configuration is ignored by Git.
+3. From `backend/`, run `wrangler d1 execute botw-discord-test --remote --file=./schema.sql`,
+   then `wrangler deploy --config wrangler.test.toml`. Note the resulting test Worker URL.
+4. Run the plugin from this review branch locally with `./gradlew run`. In its settings set **Server address** to that
+   test Worker URL and paste a webhook from a private test Discord channel into **Discord leaderboard
+   webhook**. Create a fresh challenge against the test Worker, open it as creator, and click
+   **Post to Discord**.
+5. Add a participant or change a score. The existing message and its parchment image should change
+   within roughly one minute; the channel should not receive a second message. Click the image to
+   open it larger. **Remove Discord** should delete the message.
+
+Run `node backend/test/discord.test.mjs` from the repository root for the backend's local behavior
+checks. Before a later production rollout, apply `migrations/002-discord-boards.sql` to the live D1
+database and deploy the Worker, then release the plugin update. Do not point the test plugin at the
+live service: the older live Worker does not have the Discord endpoint.
+
 ## What it does
 
 | | |
@@ -43,6 +67,8 @@ Deployed at **https://botw.marcushill3313.workers.dev** — that is the URL the 
 | `POST /v1/challenges/{code}/join` | Join. Returns a participant token. |
 | `POST /v1/challenges/{code}/events` | Report kills and drops. Participant token required. |
 | `GET /v1/creators/{rsn}/challenges` | Everything a creator has made, for their list. |
+| `PUT /v1/challenges/{code}/discord` | Creator token + webhook URL; post or resume the single Discord board. |
+| `DELETE /v1/challenges/{code}/discord` | Creator token; stop updates and remove its Discord message. |
 
 ## Two decisions worth knowing about
 

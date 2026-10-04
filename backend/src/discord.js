@@ -91,7 +91,7 @@ async function discordRequest(url, method, message)
 	{
 		throw new Error(`Discord returned ${response.status}`);
 	}
-	return method === 'DELETE' ? null : response.json();
+	return method === 'DELETE' || method === 'GET' ? null : response.json();
 }
 
 export async function connectDiscord(code, webhookUrl, creatorToken, env, leaderboardFor)
@@ -125,9 +125,13 @@ export async function connectDiscord(code, webhookUrl, creatorToken, env, leader
 	{
 		await discordRequest(url, 'GET');
 	}
-	catch
+	catch (error)
 	{
-		return { status: 400, error: 'Discord did not accept that webhook URL' };
+		// Report only the HTTP status, never the webhook URL or response body.
+		const match = /^Discord returned (\d{3})$/.exec(error.message);
+		return match
+			? { status: 400, error: `Discord rejected the webhook (HTTP ${match[1]})` }
+			: { status: 502, error: 'The BOTW service could not reach Discord' };
 	}
 
 	if (!previous)

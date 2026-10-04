@@ -52,6 +52,31 @@ test('reports Discord status without exposing the webhook token', async () =>
 	}
 });
 
+test('uses Worker-supported manual redirects and rejects a redirect response', async () =>
+{
+	const env = { DB: { prepare(sql)
+	{
+		return { bind() { return this; }, first: async () =>
+			sql.includes('creator_token') ? { creator_token: 'creator' } : null };
+	} } };
+	const originalFetch = globalThis.fetch;
+	globalThis.fetch = async (url, options) =>
+	{
+		assert.equal(options.redirect, 'manual');
+		return { ok: false, status: 302 };
+	};
+	try
+	{
+		const result = await connectDiscord('ABC234', webhook, 'creator', env, async () => []);
+		assert.equal(result.status, 400);
+		assert.match(result.error, /HTTP 302/);
+	}
+	finally
+	{
+		globalThis.fetch = originalFetch;
+	}
+});
+
 test('posts once, edits the same message after a score change, then stays quiet', async () =>
 {
 	const row = {

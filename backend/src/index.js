@@ -48,19 +48,22 @@ const SHOT_RETENTION_DAYS = 30;
 
 export default {
 	/**
-	 * Clears out expired screenshots, once a day.
+	 * Runs the Discord sync every minute and clears expired screenshots at 04:00 UTC.
 	 *
 	 * Keyed on when the challenge ended rather than when each picture was taken, so a long competition
 	 * never has its early evidence deleted while it is still being played.
 	 */
 	async scheduled(event, env, ctx)
 	{
-		if (event.cron === '0 4 * * *')
-		{
-			ctx.waitUntil(pruneShots(env));
-		}
 		if (event.cron === '* * * * *')
 		{
+			// Share one Cron Trigger: Workers Free allows only five per account.
+			// scheduledTime is the intended tick, even if Cloudflare starts the handler late.
+			const scheduled = new Date(event.scheduledTime);
+			if (scheduled.getUTCHours() === 4 && scheduled.getUTCMinutes() === 0)
+			{
+				ctx.waitUntil(pruneShots(env));
+			}
 			ctx.waitUntil(syncDiscordBoards(env, leaderboardFor));
 		}
 	},

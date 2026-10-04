@@ -16,7 +16,7 @@
   <text x="287" y="213" fill="#f0e4c5" font-family="Arial,sans-serif" font-size="16" font-weight="bold">Vorkath Week</text>
   <text x="287" y="242" fill="#c8c9ce" font-family="Arial,sans-serif" font-size="15">Boss: <tspan fill="#f0e4c5" font-weight="bold">Vorkath</tspan>  •  Code: <tspan fill="#f0e4c5">ABC234</tspan></text>
   <rect x="286" y="261" width="602" height="205" rx="5" fill="#1a1b20"/>
-  <g fill="#e5d3a9" font-family="monospace" font-size="18">
+  <g fill="#e5d3a9" font-family="monospace" font-size="18" xml:space="preserve">
     <text x="306" y="292">RANK  ADVENTURER       PTS</text>
     <text x="306" y="328">  1   Iron Willow         1240</text>
     <text x="306" y="359">  2   Rune Archer           980</text>

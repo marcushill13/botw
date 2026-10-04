@@ -45,6 +45,7 @@ const FONT = {
 	'3': '1e01010e01011e', '4': '02060a121f0202', '5': '1f101e0101011e',
 	'6': '0e10101e11110e', '7': '1f010204080808', '8': '0e11110e11110e',
 	'9': '0e11110f01010e',
+	'o': '00000e1111110e', 'd': '01010d1311130d', 'e': '00000e111f100f',
 	' ': '00000000000000', '-': '0000001f000000', '.': '00000000000004',
 	':': '00040000040000', '/': '01010204081010', '?': '0e110102040004',
 	'+': '0004041f040400', "'": '04040800000000'
@@ -71,9 +72,9 @@ function rect(pixels, height, x, y, width, tall, colour)
 	}
 }
 
-function write(pixels, height, value, x, y, colour = 9, scale = 2)
+function write(pixels, height, value, x, y, colour = 9, scale = 2, preserveCase = false)
 {
-	for (const character of String(value).toUpperCase())
+	for (const character of preserveCase ? String(value) : String(value).toUpperCase())
 	{
 		const glyph = FONT[character] ?? FONT['?'];
 		for (let gy = 0; gy < 7; gy++)
@@ -233,7 +234,7 @@ export function boardImage(challenge, leaderboard)
 	rect(pixels, height, 42, 146, WIDTH - 84, 2, 4);
 	write(pixels, height, 'RANK', 47, 159);
 	write(pixels, height, 'NAME', 117, 159);
-	write(pixels, height, 'POINTS', 340, 159);
+	write(pixels, height, 'POINTS', 308, 159);
 	rect(pixels, height, 42, 178, WIDTH - 84, 1, 4);
 
 	if (!rows.length)
@@ -246,12 +247,18 @@ export function boardImage(challenge, leaderboard)
 		write(pixels, height, String(i + 1).padStart(2), 52, y, i < 3 ? 11 : 9);
 		write(pixels, height, String(rows[i].rsn ?? '').slice(0, 12), 117, y);
 		const points = Number(rows[i].points ?? 0).toLocaleString('en-US');
-		write(pixels, height, points, 404 - textWidth(points, 2), y, i < 3 ? 11 : 9);
+		write(pixels, height, points, 380 - textWidth(points, 2), y, i < 3 ? 11 : 9);
 	}
 
-	const note = leaderboard.length > IMAGE_ROWS
-		? `+${leaderboard.length - IMAGE_ROWS} MORE IN RUNELITE`
-		: `CHALLENGE ${String(challenge.code ?? '').slice(0, 8)}`;
-	write(pixels, height, note, (WIDTH - textWidth(note, 2)) / 2, height - 65, 10);
+	if (leaderboard.length > IMAGE_ROWS)
+	{
+		const note = `+${leaderboard.length - IMAGE_ROWS} MORE IN RUNELITE`;
+		write(pixels, height, note, (WIDTH - textWidth(note, 2)) / 2, height - 65, 10);
+	}
+	else
+	{
+		const note = `Code: ${String(challenge.code ?? '').slice(0, 8)}`;
+		write(pixels, height, note, (WIDTH - textWidth(note, 1)) / 2, height - 61, 10, 1, true);
+	}
 	return png(pixels, height);
 }

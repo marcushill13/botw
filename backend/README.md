@@ -48,8 +48,9 @@ Worker and its D1 database untouched while trying it out:
    test Worker URL and paste a webhook from a private test Discord channel into **Discord leaderboard
    webhook**. Create a fresh challenge against the test Worker, open it as creator, and click
    **Post to Discord**.
-5. Add a participant or change a score. The existing message should change within roughly one minute;
-   the channel should not receive a second message. **Remove Discord** should delete it.
+5. Add a participant or change a score. The existing message and its parchment image should change
+   within roughly one minute; the channel should not receive a second message. Click the image to
+   open it larger. **Remove Discord** should delete the message.
 
 Run `node backend/test/discord.test.mjs` from the repository root for the backend's local behavior
 checks. Before a later production rollout, apply `migrations/002-discord-boards.sql` to the live D1

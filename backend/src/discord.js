@@ -85,7 +85,9 @@ async function discordRequest(url, method, message)
 		method,
 		headers: message ? { 'Content-Type': 'application/json' } : undefined,
 		body: message ? JSON.stringify(message) : undefined,
-		redirect: 'error'
+		// Cloudflare Workers does not support redirect: 'error'. Manual prevents
+		// following a redirect, and the non-2xx check below rejects its response.
+		redirect: 'manual'
 	});
 	if (!response.ok)
 	{

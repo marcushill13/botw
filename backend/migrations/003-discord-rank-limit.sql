@@ -1,0 +1,2 @@
+ALTER TABLE discord_boards
+	ADD COLUMN rank_limit INTEGER NOT NULL DEFAULT 25 CHECK (rank_limit BETWEEN 1 AND 25);

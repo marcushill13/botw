@@ -42,19 +42,21 @@ Worker and its D1 database untouched while trying it out:
 2. Copy `wrangler.toml` to `wrangler.test.toml` in this directory. Set `name = "botw-discord-test"`,
    `database_name = "botw-discord-test"`, and replace `database_id` with the new database's ID.
    This test configuration is ignored by Git.
-3. From `backend/`, run `wrangler d1 execute botw-discord-test --remote --file=./schema.sql`,
-   then `wrangler deploy --config wrangler.test.toml`. Note the resulting test Worker URL.
+3. From `backend/`, run `wrangler d1 execute botw-discord-test --remote --config wrangler.test.toml --file=./schema.sql`
+   for a new database. If reusing a test database that already has Discord boards, apply
+   `migrations/003-discord-rank-limit.sql` instead. Then run
+   `wrangler deploy --config wrangler.test.toml`. Note the resulting test Worker URL.
 4. Run the plugin from this review branch locally with `./gradlew run`. In its settings set **Server address** to that
    test Worker URL and paste a webhook from a private test Discord channel into **Discord leaderboard
    webhook**. Create a fresh challenge against the test Worker, open it as creator, and click
    **Post to Discord**.
-5. Add a participant or change a score. The existing message and its parchment image should change
-   within roughly one minute; the channel should not receive a second message. Click the image to
-   open it larger. **Remove Discord** should delete the message.
+5. Add three participants and set **Discord ranks** to 2, then click **Update Discord**. The existing
+   message should show two names and “+1 more in RuneLite” on the image. All three names should appear
+   in RuneLite. Change a score and check that the same message still updates within roughly a minute.
 
-Run `node backend/test/discord.test.mjs` from the repository root for the backend's local behavior
-checks. Before a later production rollout, apply `migrations/002-discord-boards.sql` to the live D1
-database and deploy the Worker, then release the plugin update. The single minute Cron Trigger also
+Run `node --test backend/test/*.test.mjs` from the repository root for the backend checks.
+Before releasing the rank limit update, apply `migrations/003-discord-rank-limit.sql` once to the
+live D1 database and deploy the Worker, then release the plugin update. The single minute Cron Trigger also
 handles daily screenshot cleanup at 04:00 UTC, keeping this Worker within the Workers Free account
 limit. If an older `wrangler.test.toml` still lists two crons, change its `crons` line to
 `["* * * * *"]` before redeploying staging.
@@ -69,7 +71,7 @@ limit. If an older `wrangler.test.toml` still lists two crons, change its `crons
 | `POST /v1/challenges/{code}/join` | Join. Returns a participant token. |
 | `POST /v1/challenges/{code}/events` | Report kills and drops. Participant token required. |
 | `GET /v1/creators/{rsn}/challenges` | Everything a creator has made, for their list. |
-| `PUT /v1/challenges/{code}/discord` | Creator token + webhook URL; post or resume the single Discord board. |
+| `PUT /v1/challenges/{code}/discord` | Creator token; post with a webhook URL or update the existing board. Optional `rankLimit` (1–25). |
 | `DELETE /v1/challenges/{code}/discord` | Creator token; stop updates and remove its Discord message. |
 
 ## Two decisions worth knowing about

@@ -39,14 +39,13 @@ test('renders a valid parchment PNG with the current scores', async () =>
 	assert.ok(image.length > 1000);
 });
 
-test('provides a text continuation after the first parchment page', () =>
+test('keeps one embed when there are more players than the Discord rank limit', () =>
 {
 	const leaderboard = Array.from({ length: 27 }, (_, i) => ({ rsn: `Player ${i + 1}`, points: 100 - i }));
 	const { message } = hiscores(
 		{ name: 'Vorkath Week', boss: 'Vorkath', code: 'ABC234', ends_at: 1800000000000 },
 		leaderboard);
-	assert.match(message.embeds[1].description, /RANK  NAME/);
-	assert.match(message.embeds[1].description, /26   Player 26/);
+	assert.equal(message.embeds.length, 1);
 });
 
 test('reports Discord status without exposing the webhook token', async () =>
@@ -96,12 +95,13 @@ test('uses Worker-supported manual redirects and rejects a redirect response', a
 	}
 });
 
-test('posts once, edits the same message after a score change, then stays quiet', async () =>
+test('posts once and updates the same message when the score or rank limit changes', async () =>
 {
 	const row = {
 		webhook_url: webhook,
 		message_id: null,
 		last_state: null,
+		rank_limit: 25,
 		code: 'ABC234', name: 'Vorkath Week', boss: 'Vorkath', ends_at: 1800000000000
 	};
 	const env = { DB: { prepare(sql)
@@ -109,7 +109,7 @@ test('posts once, edits the same message after a score change, then stays quiet'
 		let args;
 		return {
 			bind(...values) { args = values; return this; },
-			async first() { return { ...row }; },
+			async first() { return { ...row, creator_token: 'creator' }; },
 			async run()
 			{
 				if (sql.includes('message_id IS NULL'))
@@ -122,6 +122,7 @@ test('posts once, edits the same message after a score change, then stays quiet'
 					[row.message_id, row.last_state] = args;
 				}
 				else if (sql.includes('SET last_state')) row.last_state = args[0];
+				else if (sql.includes('SET rank_limit')) row.rank_limit = args[0];
 				return { meta: { changes: 1 } };
 			}
 		};
@@ -136,7 +137,8 @@ test('posts once, edits the same message after a score change, then stays quiet'
 	};
 	try
 	{
-		const leaderboard = async () => [{ rsn: 'A Hero', points }];
+		const leaderboard = async () => Array.from({ length: 29 }, (_, i) =>
+			({ rsn: `Player ${i + 1}`, points: i === 0 ? points : 0 }));
 		await syncDiscordBoard('ABC234', env, leaderboard);
 		assert.equal(row.message_id, 'message123');
 		assert.equal(calls[0].method, 'POST');
@@ -156,6 +158,32 @@ test('posts once, edits the same message after a score change, then stays quiet'
 			new Uint8Array(await calls[1].body.get('files[0]').arrayBuffer()));
 		await syncDiscordBoard('ABC234', env, leaderboard);
 		assert.equal(calls.length, 2);
+
+		const invalid = await connectDiscord('ABC234', undefined, 'creator', env, leaderboard, 26);
+		assert.equal(invalid.status, 400);
+		assert.equal(row.rank_limit, 25);
+		const denied = await connectDiscord('ABC234', undefined, 'not-creator', env, leaderboard, 20);
+		assert.equal(denied.status, 403);
+		assert.equal(calls.length, 2);
+
+		const update = await connectDiscord('ABC234', undefined, 'creator', env, leaderboard, 20);
+		assert.equal(update.status, 200);
+		assert.equal(row.rank_limit, 20);
+		assert.equal(row.message_id, 'message123');
+		assert.equal(calls[2].method, 'GET');
+		assert.equal(calls[3].method, 'PATCH');
+		assert.equal(calls[3].url, `${webhook}/messages/message123`);
+		const payload = JSON.parse(calls[3].body.get('payload_json'));
+		assert.equal(payload.embeds.length, 1);
+		const before = new DataView(await calls[1].body.get('files[0]').arrayBuffer());
+		const after = new DataView(await calls[3].body.get('files[0]').arrayBuffer());
+		// PNG height is at byte 20. The scroll is five rows shorter, 21px per row.
+		assert.equal(before.getUint32(20) - after.getUint32(20), 5 * 21);
+
+		const legacy = await connectDiscord('ABC234', webhook, 'creator', env, leaderboard);
+		assert.equal(legacy.status, 200);
+		assert.equal(row.rank_limit, 20);
+		assert.deepEqual(calls.map(call => call.method), ['POST', 'PATCH', 'GET', 'PATCH', 'GET']);
 	}
 	finally
 	{

@@ -104,6 +104,9 @@ public class BotwApi
 		/** Only present when the challenge was just created or joined. */
 		String creatorToken;
 		String participantToken;
+
+		/** Null when this challenge has no Discord board. */
+		Integer discordRankLimit;
 	}
 
 	public Result<Snapshot> create(String baseUrl, Challenge challenge, String creatorRsn)
@@ -168,10 +171,15 @@ public class BotwApi
 	}
 
 	/** The webhook URL goes only to the BOTW service; it must never appear in public challenge data. */
-	public Result<Boolean> connectDiscord(String baseUrl, String code, String creatorToken, String webhookUrl)
+	public Result<Boolean> connectDiscord(
+		String baseUrl, String code, String creatorToken, String webhookUrl, int rankLimit)
 	{
 		JsonObject body = new JsonObject();
-		body.addProperty("webhookUrl", webhookUrl);
+		if (webhookUrl != null)
+		{
+			body.addProperty("webhookUrl", webhookUrl);
+		}
+		body.addProperty("rankLimit", rankLimit);
 		return sendDiscord(new Request.Builder()
 			.url(url(baseUrl, "v1", "challenges", code, "discord"))
 			.put(RequestBody.create(JSON, gson.toJson(body)))
@@ -410,7 +418,7 @@ public class BotwApi
 		JsonObject root = gson.fromJson(text, JsonObject.class);
 		if (root == null)
 		{
-			return new Snapshot(null, new ArrayList<>(), null, null);
+			return new Snapshot(null, new ArrayList<>(), null, null, null);
 		}
 
 		Challenge challenge = root.has("challenge") && !root.get("challenge").isJsonNull()
@@ -442,7 +450,9 @@ public class BotwApi
 			challenge,
 			leaderboard,
 			stringOrNull(root, "creatorToken"),
-			stringOrNull(root, "participantToken"));
+			stringOrNull(root, "participantToken"),
+			root.has("discordRankLimit") && !root.get("discordRankLimit").isJsonNull()
+				? root.get("discordRankLimit").getAsInt() : null);
 	}
 
 	/**

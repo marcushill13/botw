@@ -119,7 +119,7 @@ async function route(request, env)
 	{
 		const body = await readJson(request);
 		const result = await connectDiscord(discord[1].toUpperCase(), body?.webhookUrl,
-			request.headers.get('X-Creator-Token'), env, leaderboardFor);
+			request.headers.get('X-Creator-Token'), env, leaderboardFor, body?.rankLimit);
 		return withCors(json(result.error ? { error: result.error } : { enabled: true }, result.status));
 	}
 	if (discord && request.method === 'DELETE')
@@ -230,7 +230,10 @@ async function createChallenge(request, env)
 
 async function readChallenge(code, env)
 {
-	const challenge = await loadChallenge(code, env);
+	const challenge = await env.DB.prepare(
+		`SELECT c.*, b.rank_limit AS discord_rank_limit
+		   FROM challenges c LEFT JOIN discord_boards b ON b.challenge_code = c.code
+		  WHERE c.code = ?`).bind(code).first();
 	if (!challenge)
 	{
 		return json({ error: 'No challenge with that code' }, 404);
@@ -238,7 +241,8 @@ async function readChallenge(code, env)
 
 	return json({
 		challenge: publicChallenge(challenge),
-		leaderboard: await leaderboardFor(code, env)
+		leaderboard: await leaderboardFor(code, env),
+		discordRankLimit: challenge.discord_rank_limit
 	});
 }
 

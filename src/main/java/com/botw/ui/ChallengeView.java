@@ -12,7 +12,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.IntConsumer;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -31,6 +33,8 @@ import net.runelite.client.ui.FontManager;
  */
 public class ChallengeView extends JPanel
 {
+	private static final int MAX_DISCORD_RANKS = 25;
+
 	/**
 	 * What the creator may do to the leaderboard by hand. Null for everyone else, which is what makes
 	 * the controls appear only for them.
@@ -95,7 +99,7 @@ public class ChallengeView extends JPanel
 		JPanel evidence)
 	{
 		this(challenge, leaderboard, yourName, creator, itemManager, onBack, onRefresh, evidence,
-			null, null, null, null, null, null, null);
+			null, null, null, null, null, null, null, null);
 	}
 
 	/**
@@ -117,7 +121,8 @@ public class ChallengeView extends JPanel
 		LeaderboardEditor editor,
 		Runnable onPreview,
 		Runnable onEndPreview,
-		Runnable onDiscordConnect,
+		Integer discordRankLimit,
+		IntConsumer onDiscordConnect,
 		Runnable onDiscordRemove)
 	{
 		this.itemManager = itemManager;
@@ -174,12 +179,17 @@ public class ChallengeView extends JPanel
 		if (onDiscordConnect != null)
 		{
 			body.add(Cards.gap(6));
+			JTextField rankLimit = Theme.textField(new JTextField(
+				String.valueOf(discordRankLimit == null ? MAX_DISCORD_RANKS : discordRankLimit), 3));
+			rankLimit.setHorizontalAlignment(JTextField.RIGHT);
+			rankLimit.setMaximumSize(rankLimit.getPreferredSize());
+
 			JPanel discordRow = new JPanel(new java.awt.GridLayout(1, 2, 4, 0));
 			discordRow.setBackground(Theme.BACKGROUND);
 			discordRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-			JButton connect = Cards.button("Post to Discord");
-			connect.setToolTipText("Post one hiscores message and keep its scores updated");
-			connect.addActionListener(event -> onDiscordConnect.run());
+			JButton connect = Cards.button(discordRankLimit == null ? "Post to Discord" : "Update Discord");
+			connect.setToolTipText("Save how many ranks appear on the Discord leaderboard");
+			connect.addActionListener(event -> saveDiscordRanks(rankLimit, onDiscordConnect));
 			discordRow.add(connect);
 			JButton remove = Cards.button("Remove Discord");
 			remove.setToolTipText("Stop updates and remove the Discord message");
@@ -187,6 +197,19 @@ public class ChallengeView extends JPanel
 			discordRow.add(remove);
 			discordRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, discordRow.getPreferredSize().height));
 			body.add(discordRow);
+
+			body.add(Cards.gap(4));
+			JPanel rankRow = new JPanel();
+			rankRow.setLayout(new BoxLayout(rankRow, BoxLayout.X_AXIS));
+			rankRow.setBackground(Theme.BACKGROUND);
+			rankRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+			JLabel label = Cards.muted("Discord ranks (1–" + MAX_DISCORD_RANKS + ")");
+			label.setLabelFor(rankLimit);
+			rankRow.add(label);
+			rankRow.add(Box.createHorizontalStrut(6));
+			rankRow.add(rankLimit);
+			rankRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, rankRow.getPreferredSize().height));
+			body.add(rankRow);
 		}
 
 		body.add(Cards.gap(10));
@@ -223,6 +246,27 @@ public class ChallengeView extends JPanel
 		}
 
 		add(body, BorderLayout.NORTH);
+	}
+
+	private void saveDiscordRanks(JTextField field, IntConsumer save)
+	{
+		int limit = 0;
+		try
+		{
+			limit = Integer.parseInt(field.getText().trim());
+		}
+		catch (NumberFormatException ignored)
+		{
+			// The range check also handles empty and nonnumeric input.
+		}
+		if (limit < 1 || limit > MAX_DISCORD_RANKS)
+		{
+			Cards.warn(this, "Enter a whole number from 1 to " + MAX_DISCORD_RANKS + ".");
+			field.requestFocusInWindow();
+			field.selectAll();
+			return;
+		}
+		save.accept(limit);
 	}
 
 	private JPanel backRow(Runnable onRefresh)

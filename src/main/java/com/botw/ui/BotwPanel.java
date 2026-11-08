@@ -710,14 +710,24 @@ public class BotwPanel extends PluginPanel
 					creatorToken == null ? null : leaderboardEditor(code, creatorToken),
 					canPreview ? () -> openChallenge(code, true) : null,
 					asPlayer ? () -> openChallenge(code, false) : null,
-					creatorToken == null ? null : () -> connectDiscord(code, creatorToken),
+					snapshot.getDiscordRankLimit(),
+					creatorToken == null ? null : rankLimit ->
+						connectDiscord(code, creatorToken, rankLimit, snapshot.getDiscordRankLimit() != null),
 					creatorToken == null ? null : () -> removeDiscord(code, creatorToken)));
 			});
 		});
 	}
 
-	private void connectDiscord(String code, String creatorToken)
+	private void connectDiscord(String code, String creatorToken, int rankLimit, boolean updating)
 	{
+		if (updating)
+		{
+			runDiscord(code, "Updating hiscores…",
+				() -> api.connectDiscord(config.serverUrl(), code, creatorToken, null, rankLimit),
+				"Discord hiscores updated.");
+			return;
+		}
+
 		String webhookUrl = config.discordWebhookUrl().trim();
 		if (webhookUrl.isEmpty())
 		{
@@ -732,7 +742,7 @@ public class BotwPanel extends PluginPanel
 		if (answer == JOptionPane.YES_OPTION)
 		{
 			runDiscord(code, "Posting hiscores…",
-				() -> api.connectDiscord(config.serverUrl(), code, creatorToken, webhookUrl),
+				() -> api.connectDiscord(config.serverUrl(), code, creatorToken, webhookUrl, rankLimit),
 				"Hiscores are posted. You can pin the message in Discord.");
 		}
 	}

@@ -37,7 +37,8 @@ CREATE TABLE IF NOT EXISTS discord_boards (
 	challenge_code TEXT PRIMARY KEY REFERENCES challenges(code) ON DELETE CASCADE,
 	webhook_url    TEXT NOT NULL,
 	message_id     TEXT,
-	last_state     TEXT
+	last_state     TEXT,
+	rank_limit     INTEGER NOT NULL DEFAULT 25 CHECK (rank_limit BETWEEN 1 AND 25)
 );
 
 CREATE TABLE IF NOT EXISTS participants (

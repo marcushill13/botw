@@ -3,7 +3,7 @@
  *  same webhook message and replaced when the board changes. No image hosting is needed.
  */
 
-export const IMAGE_ROWS = 25;
+export const MAX_IMAGE_ROWS = 25;
 const WIDTH = 440;
 const PALETTE = [
 	[25, 24, 20], [48, 44, 34], [78, 70, 52], [121, 93, 51],
@@ -190,9 +190,9 @@ function png(pixels, height)
 	]);
 }
 
-export function boardImage(challenge, leaderboard)
+export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 {
-	const rows = leaderboard.slice(0, IMAGE_ROWS);
+	const rows = leaderboard.slice(0, rankLimit);
 	const height = 260 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
@@ -250,9 +250,9 @@ export function boardImage(challenge, leaderboard)
 		write(pixels, height, points, 380 - textWidth(points, 2), y, i < 3 ? 11 : 9);
 	}
 
-	if (leaderboard.length > IMAGE_ROWS)
+	if (leaderboard.length > rows.length)
 	{
-		const note = `+${leaderboard.length - IMAGE_ROWS} MORE IN RUNELITE`;
+		const note = `+${leaderboard.length - rows.length} MORE IN RUNELITE`;
 		write(pixels, height, note, (WIDTH - textWidth(note, 2)) / 2, height - 65, 10);
 	}
 	else

@@ -1,8 +1,7 @@
 /** The Discord message is owned by the service, so it keeps updating while RuneLite is closed. */
-import { boardImage, IMAGE_ROWS } from './board-image.js';
+import { boardImage, MAX_IMAGE_ROWS } from './board-image.js';
 
 const DISCORD_COLOUR = 0x9f7839;
-const MAX_ROWS = 100;
 const POSTING = '__posting__';
 
 export function validWebhookUrl(value)
@@ -37,26 +36,16 @@ function safeText(value)
 
 export function hiscores(challenge, leaderboard, now = Date.now())
 {
-	const ranked = leaderboard.slice(0, MAX_ROWS);
-	const lines = ['RANK  NAME             PTS'];
-	for (let i = IMAGE_ROWS; i < ranked.length; i++)
-	{
-		const name = String(ranked[i].rsn ?? '').replace(/[^A-Za-z0-9 -]/g, '').slice(0, 12);
-		const points = String(ranked[i].points ?? 0);
-		lines.push(`${String(i + 1).padStart(3)}   ${name.padEnd(12)}  ${points.padStart(7)}`);
-	}
-	if (leaderboard.length > MAX_ROWS)
-	{
-		lines.push(`      +${leaderboard.length - MAX_ROWS} more in the plugin`);
-	}
-
+	const rankLimit = challenge.rank_limit ?? MAX_IMAGE_ROWS;
 	const state = JSON.stringify({
-		style: 3,
+		style: 4,
 		name: challenge.name,
 		boss: challenge.boss,
 		code: challenge.code,
 		endsAt: challenge.ends_at,
-		rows: leaderboard.map(row => [row.rsn, row.points])
+		rankLimit,
+		total: leaderboard.length,
+		rows: leaderboard.slice(0, rankLimit).map(row => [row.rsn, row.points])
 	});
 	const description = `**${safeText(challenge.name).slice(0, 120)}**\n`
 		+ `Boss: **${safeText(challenge.boss).slice(0, 120)}**  •  Code: \`${safeText(challenge.code)}\`\n`
@@ -68,13 +57,6 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 		image: { url: 'attachment://hiscores.png' },
 		footer: { text: `One board, always current · Last score change ${new Date(now).toISOString()}` }
 	}];
-	if (ranked.length > IMAGE_ROWS || leaderboard.length > MAX_ROWS)
-	{
-		embeds.push({
-			title: 'Further rankings',
-			description: `\`\`\`text\n${lines.join('\n')}\n\`\`\``
-		});
-	}
 
 	return {
 		state,
@@ -117,12 +99,11 @@ async function discordRequest(url, method, message, picture)
 	return method === 'DELETE' || method === 'GET' ? null : response.json();
 }
 
-export async function connectDiscord(code, webhookUrl, creatorToken, env, leaderboardFor)
+export async function connectDiscord(code, webhookUrl, creatorToken, env, leaderboardFor, rankLimit)
 {
-	const url = validWebhookUrl(webhookUrl);
-	if (!url)
+	if (rankLimit !== undefined && (!Number.isInteger(rankLimit) || rankLimit < 1 || rankLimit > MAX_IMAGE_ROWS))
 	{
-		return { status: 400, error: 'Paste a Discord channel webhook URL from discord.com' };
+		return { status: 400, error: `Ranks to show must be a whole number from 1 to ${MAX_IMAGE_ROWS}` };
 	}
 
 	const challenge = await env.DB.prepare('SELECT creator_token FROM challenges WHERE code = ?')
@@ -136,8 +117,13 @@ export async function connectDiscord(code, webhookUrl, creatorToken, env, leader
 		return { status: 403, error: 'Only the creator can connect Discord' };
 	}
 
-	const previous = await env.DB.prepare('SELECT webhook_url FROM discord_boards WHERE challenge_code = ?')
+	const previous = await env.DB.prepare('SELECT webhook_url, rank_limit FROM discord_boards WHERE challenge_code = ?')
 		.bind(code).first();
+	const url = validWebhookUrl(webhookUrl ?? previous?.webhook_url);
+	if (!url)
+	{
+		return { status: 400, error: 'Paste a Discord channel webhook URL from discord.com' };
+	}
 	if (previous && previous.webhook_url !== url)
 	{
 		return { status: 409, error: 'Remove the existing Discord leaderboard before changing channels' };
@@ -160,8 +146,13 @@ export async function connectDiscord(code, webhookUrl, creatorToken, env, leader
 	if (!previous)
 	{
 		await env.DB.prepare(
-			'INSERT INTO discord_boards (challenge_code, webhook_url) VALUES (?, ?)')
-			.bind(code, url).run();
+			'INSERT INTO discord_boards (challenge_code, webhook_url, rank_limit) VALUES (?, ?, ?)')
+			.bind(code, url, rankLimit ?? MAX_IMAGE_ROWS).run();
+	}
+	else if (rankLimit !== undefined && rankLimit !== previous.rank_limit)
+	{
+		await env.DB.prepare('UPDATE discord_boards SET rank_limit = ? WHERE challenge_code = ?')
+			.bind(rankLimit, code).run();
 	}
 
 	try
@@ -172,7 +163,7 @@ export async function connectDiscord(code, webhookUrl, creatorToken, env, leader
 	catch
 	{
 		// Keep the configuration: a temporary Discord failure can be retried by the next schedule.
-		return { status: 502, error: 'Discord is connected, but the first update failed. It will retry shortly.' };
+		return { status: 502, error: 'Discord is connected, but the message could not be updated. Check the channel and try again.' };
 	}
 }
 
@@ -208,7 +199,7 @@ export async function removeDiscord(code, creatorToken, env)
 export async function syncDiscordBoard(code, env, leaderboardFor)
 {
 	const board = await env.DB.prepare(
-		`SELECT b.webhook_url, b.message_id, b.last_state,
+		`SELECT b.webhook_url, b.message_id, b.last_state, b.rank_limit,
 		        c.code, c.name, c.boss, c.ends_at
 		   FROM discord_boards b JOIN challenges c ON c.code = b.challenge_code
 		  WHERE b.challenge_code = ?`)
@@ -242,7 +233,7 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 		}
 		try
 		{
-			const picture = await boardImage(board, leaderboard);
+			const picture = await boardImage(board, leaderboard, board.rank_limit);
 			const result = await discordRequest(`${board.webhook_url}?wait=true`, 'POST', message, picture);
 			await env.DB.prepare(
 				'UPDATE discord_boards SET message_id = ?, last_state = ? WHERE challenge_code = ?')
@@ -258,7 +249,7 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 		return;
 	}
 
-	const picture = await boardImage(board, leaderboard);
+	const picture = await boardImage(board, leaderboard, board.rank_limit);
 	await discordRequest(`${board.webhook_url}/messages/${board.message_id}`, 'PATCH', message, picture);
 	await env.DB.prepare(
 		'UPDATE discord_boards SET last_state = ? WHERE challenge_code = ? AND message_id = ?')

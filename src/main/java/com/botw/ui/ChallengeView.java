@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.IntConsumer;
 import javax.swing.BorderFactory;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JLabel;
@@ -180,9 +179,12 @@ public class ChallengeView extends JPanel
 		{
 			body.add(Cards.gap(6));
 			JTextField rankLimit = Theme.textField(new JTextField(
-				String.valueOf(discordRankLimit == null ? MAX_DISCORD_RANKS : discordRankLimit), 3));
-			rankLimit.setHorizontalAlignment(JTextField.RIGHT);
-			rankLimit.setMaximumSize(rankLimit.getPreferredSize());
+				String.valueOf(discordRankLimit == null ? MAX_DISCORD_RANKS : discordRankLimit)));
+			rankLimit.setFont(Theme.figure(14f));
+			rankLimit.setHorizontalAlignment(JTextField.CENTER);
+			Dimension fieldSize = rankLimit.getPreferredSize();
+			fieldSize.width = Math.max(52, fieldSize.width);
+			rankLimit.setPreferredSize(fieldSize);
 
 			JPanel discordRow = new JPanel(new java.awt.GridLayout(1, 2, 4, 0));
 			discordRow.setBackground(Theme.BACKGROUND);
@@ -199,15 +201,14 @@ public class ChallengeView extends JPanel
 			body.add(discordRow);
 
 			body.add(Cards.gap(4));
-			JPanel rankRow = new JPanel();
-			rankRow.setLayout(new BoxLayout(rankRow, BoxLayout.X_AXIS));
+			JPanel rankRow = new JPanel(new BorderLayout(8, 0));
 			rankRow.setBackground(Theme.BACKGROUND);
 			rankRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-			JLabel label = Cards.muted("Discord ranks (1–" + MAX_DISCORD_RANKS + ")");
+			JLabel label = Cards.body("Discord ranks (1–" + MAX_DISCORD_RANKS + ")");
+			label.setForeground(Theme.TEXT_MUTED);
 			label.setLabelFor(rankLimit);
-			rankRow.add(label);
-			rankRow.add(Box.createHorizontalStrut(6));
-			rankRow.add(rankLimit);
+			rankRow.add(label, BorderLayout.CENTER);
+			rankRow.add(rankLimit, BorderLayout.LINE_END);
 			rankRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, rankRow.getPreferredSize().height));
 			body.add(rankRow);
 		}

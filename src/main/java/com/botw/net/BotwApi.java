@@ -1,6 +1,7 @@
 package com.botw.net;
 
 import com.botw.data.Challenge;
+import com.botw.data.ChallengeType;
 import com.botw.data.DropRule;
 import com.botw.data.LeaderboardEntry;
 import com.botw.track.PendingEvent;
@@ -125,9 +126,15 @@ public class BotwApi
 		body.addProperty("raidByPoints", challenge.isRaidByPoints());
 		body.add("raidPoints", gson.toJsonTree(challenge.getRaidPoints()));
 
-		return send(new Request.Builder()
-			.url(url(baseUrl, "v1", "challenges"))
+		boolean weekly = challenge.getEventType() != ChallengeType.BOSS;
+		// Older Workers accept extra JSON fields on /challenges. Use a new path so they cannot
+		// silently save a raid or skill event as a boss challenge.
+		Result<Snapshot> result = send(new Request.Builder()
+			.url(url(baseUrl, "v1", weekly ? "weekly-challenges" : "challenges"))
 			.post(RequestBody.create(JSON, gson.toJson(body))));
+		return weekly && result.isGone()
+			? Result.failed("This server does not support weekly events yet. Check the BOTW server address.")
+			: result;
 	}
 
 	public Result<Snapshot> read(String baseUrl, String code)

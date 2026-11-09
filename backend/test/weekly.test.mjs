@@ -26,7 +26,8 @@ function service(db = new DatabaseSync(':memory:'))
 	const now = Date.now();
 	async function request(method, path, body, headers = {})
 	{
-		const response = await worker.fetch(new Request('https://botw.test/v1/challenges' + path, {
+		const endpoint = method === 'POST' && !path && body?.eventType ? 'weekly-challenges' : 'challenges';
+		const response = await worker.fetch(new Request('https://botw.test/v1/' + endpoint + path, {
 			method, headers, body: body ? JSON.stringify(body) : undefined
 		}), { DB });
 		return { status: response.status, ...await response.json() };

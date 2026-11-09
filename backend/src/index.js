@@ -94,7 +94,7 @@ async function route(request, env)
 		return withCors(new Response(null, { status: 204 }));
 	}
 
-	if (path === '/v1/challenges' && request.method === 'POST')
+	if ((path === '/v1/challenges' || path === '/v1/weekly-challenges') && request.method === 'POST')
 	{
 		return withCors(await createChallenge(request, env));
 	}

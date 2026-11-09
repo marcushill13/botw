@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 public class PrizeCandidate
 {
 	private String itemName;
+	private String category;
 	private String rsn;
 	private long occurredAt;
 }

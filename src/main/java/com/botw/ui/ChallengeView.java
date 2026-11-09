@@ -605,18 +605,42 @@ public class ChallengeView extends JPanel
 	private void renderPrizes()
 	{
 		prizeHolder.removeAll();
-		if (challenge.getDrops().stream().anyMatch(DropRule::isFirstPrize))
+		if (challenge.getEventType() == ChallengeType.RAID
+			|| challenge.getDrops().stream().anyMatch(DropRule::isFirstPrize))
 		{
 			prizeHolder.add(Cards.gap(10));
 			prizeHolder.add(Cards.sectionLabel("First prize candidates"));
-			prizeHolder.add(Cards.muted("Earliest recorded drops. Confirm screenshots and claims before awarding."));
+			prizeHolder.add(Cards.muted("Earliest recorded results. Confirm screenshots and claims before awarding."));
+			if (challenge.getEventType() == ChallengeType.RAID)
+			{
+				String firstClear = "Not yet recorded";
+				String firstPurple = "Not yet recorded";
+				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
+				{
+					if ("clear".equals(candidate.getCategory()))
+					{
+						firstClear = candidate.getRsn() + " (" + candidate.getItemName() + ")";
+					}
+				}
+				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
+				{
+					if (!"clear".equals(candidate.getCategory()) && challenge.getDrops().stream()
+						.anyMatch(drop -> drop.isPurple() && drop.getName().equalsIgnoreCase(candidate.getItemName())))
+					{
+						firstPurple = candidate.getRsn() + " (" + candidate.getItemName() + ")";
+						break;
+					}
+				}
+				prizeHolder.add(Cards.muted("First recorded clear: " + firstClear));
+				prizeHolder.add(Cards.muted("First recorded purple: " + firstPurple));
+			}
 			for (DropRule rule : challenge.getDrops())
 			{
 				if (!rule.isFirstPrize()) continue;
 				String holder = "Unclaimed";
 				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
 				{
-					if (rule.getName().equalsIgnoreCase(candidate.getItemName()))
+					if (!"clear".equals(candidate.getCategory()) && rule.getName().equalsIgnoreCase(candidate.getItemName()))
 					{
 						holder = candidate.getRsn();
 						break;
@@ -809,7 +833,7 @@ public class ChallengeView extends JPanel
 			{
 				// Nothing is sent when one box is wrong. Saving the good rows and stopping at the bad
 				// one would leave the creator guessing which half went through.
-				Cards.warn(this, "\"" + field.getText().trim() + "\" is not a number of points.");
+				Cards.warn(this, "\"" + field.getText().trim() + "\" is not a whole number.");
 				return;
 			}
 
@@ -861,7 +885,7 @@ public class ChallengeView extends JPanel
 		form.add(new JLabel("RuneScape name"));
 		form.add(name);
 		form.add(new JLabel(" "));
-		form.add(new JLabel("Points"));
+		form.add(new JLabel("Score (" + challenge.scoreUnit() + ")"));
 		form.add(points);
 
 		SwingUtilities.invokeLater(name::requestFocusInWindow);
@@ -884,7 +908,7 @@ public class ChallengeView extends JPanel
 		Integer starting = parsePoints(points.getText());
 		if (starting == null)
 		{
-			Cards.warn(this, "\"" + points.getText().trim() + "\" is not a number of points.");
+			Cards.warn(this, "\"" + points.getText().trim() + "\" is not a whole number.");
 			return;
 		}
 

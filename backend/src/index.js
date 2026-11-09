@@ -298,7 +298,10 @@ async function updateChallenge(code, request, env)
 
 	// Changing what a drop is worth has to change what it was already worth, or the leaderboard
 	// silently disagrees with the rules everyone can see.
-	await recomputePoints(code, env);
+	if (typeOf(challenge) === 'BOSS' || typeOf(challenge) === 'RAID')
+	{
+		await recomputePoints(code, env);
+	}
 
 	const updated = await loadChallenge(code, env);
 	return json({
@@ -416,7 +419,6 @@ async function submitEvents(code, request, env)
 	const drops = JSON.parse(challenge.drops);
 	const now = Date.now();
 	const statements = [];
-	let refresh = false;
 
 	for (const event of submitted)
 	{
@@ -444,7 +446,6 @@ async function submitEvents(code, request, env)
 			continue;
 		}
 
-		refresh ||= event.kind !== 'xp' && event.kind !== 'level';
 		statements.push(env.DB.prepare(
 			`INSERT OR IGNORE INTO events
 				(id, challenge_code, rsn, kind, item_name, amount, points, occurred_at, recorded_at)
@@ -464,7 +465,7 @@ async function submitEvents(code, request, env)
 	if (statements.length > 0)
 	{
 		await env.DB.batch(statements);
-		if (refresh) await refreshTotals(code, participant.rsn, env);
+		if (typeOf(challenge) !== 'SKILL') await refreshTotals(code, participant.rsn, env, challenge);
 	}
 
 	if (typeOf(challenge) !== 'BOSS')
@@ -678,11 +679,10 @@ async function setParticipantPoints(code, rsn, request, env)
 	}
 
 	const wanted = Math.trunc(body.points);
-	const tracked = await trackedPoints(code, existing.rsn, env, challenge);
 
 	await env.DB.prepare(
-		'UPDATE participants SET adjustment = ?, points = ? WHERE challenge_code = ? AND rsn = ?')
-		.bind(wanted - tracked, wanted, code, existing.rsn)
+		'UPDATE participants SET adjustment = ? - (points - adjustment), points = ? WHERE challenge_code = ? AND rsn = ?')
+		.bind(wanted, wanted, code, existing.rsn)
 		.run();
 
 	return json({
@@ -846,11 +846,6 @@ async function refreshTotals(code, rsn, env, challenge = null)
 			JSON.stringify(totals.raidModes), code, rsn).run();
 }
 
-async function trackedPoints(code, rsn, env, challenge = null)
-{
-	return (await eventTotals(code, rsn, env, challenge)).points;
-}
-
 async function eventTotals(code, rsn, env, challenge)
 {
 	const rules = challenge ?? await loadChallenge(code, env);
@@ -888,7 +883,16 @@ async function eventTotals(code, rsn, env, challenge)
 async function prizeCandidates(challenge, env)
 {
 	const rules = JSON.parse(challenge.drops).filter(rule => rule.firstPrize);
-	if (!rules.length) return [];
+	const candidates = [];
+	if (typeOf(challenge) === 'RAID')
+	{
+		const clear = await env.DB.prepare(
+			`SELECT 'clear' AS category, item_name AS itemName, rsn, occurred_at AS occurredAt
+			   FROM events WHERE challenge_code = ? AND kind = 'raid'
+			  ORDER BY occurred_at, recorded_at, id LIMIT 1`).bind(challenge.code).first();
+		if (clear) candidates.push(clear);
+	}
+	if (!rules.length) return candidates;
 	const rows = await env.DB.prepare(
 		`WITH prizes AS (
 		  SELECT item_name AS itemName, rsn, occurred_at AS occurredAt,
@@ -901,7 +905,7 @@ async function prizeCandidates(challenge, env)
 		)
 		SELECT itemName, rsn, occurredAt FROM prizes WHERE position = 1 ORDER BY occurredAt`)
 		.bind(challenge.code, JSON.stringify(rules.map(rule => rule.name))).all();
-	return rows.results ?? [];
+	return candidates.concat(rows.results ?? []);
 }
 
 /**

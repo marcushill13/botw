@@ -303,7 +303,15 @@ public class CreatePanel extends JPanel
 				weeklyDrop(drop, true, true);
 			}
 			weeklyDrop(WeeklyTargets.raidPet(target), true, false);
-			if (WeeklyTargets.ARCHIVE.equals(target)) weeklyDrop("Horn of Bran", true, false);
+			if (WeeklyTargets.ARCHIVE.equals(target))
+			{
+				weeklyDrop("Horn of Bran", true, false);
+				for (String fragment : new String[] {"Fragment of whispering wind", "Fragment of deep water",
+					"Fragment of living earth", "Fragment of burning fire"})
+				{
+					weeklyDrop(fragment, false, false);
+				}
+			}
 		}
 		else if (type == ChallengeType.SKILL && "Slayer".equals(target))
 		{

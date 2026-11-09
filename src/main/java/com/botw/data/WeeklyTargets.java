@@ -92,8 +92,7 @@ public final class WeeklyTargets
 				return new String[] {"Osmumten's fang", "Lightbearer", "Elidinis' ward", "Masori mask",
 					"Masori body", "Masori chaps", "Tumeken's shadow (uncharged)"};
 			case ARCHIVE:
-				return new String[] {"Rondache", "Zorya's tome (uncharged)", "Ascension crossbows", "Obligator", "Fragment of whispering wind",
-					"Fragment of deep water", "Fragment of living earth", "Fragment of burning fire"};
+				return new String[] {"Rondache", "Zorya's tome (uncharged)", "Ascension crossbows", "Obligator"};
 			default: return new String[0];
 		}
 	}

@@ -71,7 +71,7 @@ public class ChallengeStore
 		}
 	}
 
-	public void load()
+	public synchronized void load()
 	{
 		memberships.clear();
 
@@ -118,16 +118,16 @@ public class ChallengeStore
 		configManager.setRSProfileConfiguration(CONFIG_GROUP, KEY, gson.toJson(memberships));
 	}
 
-	public List<Membership> all()
+	public synchronized List<Membership> all()
 	{
-		return Collections.unmodifiableList(memberships);
+		return Collections.unmodifiableList(new ArrayList<>(memberships));
 	}
 
 	/**
 	 * The challenges whose kills should be counted. Everything joined, whether or not it is running —
 	 * the tracker decides that per kill, because a challenge can start while the client is open.
 	 */
-	public List<Challenge> joined()
+	public synchronized List<Challenge> joined()
 	{
 		List<Challenge> joined = new ArrayList<>();
 		for (Membership membership : memberships)
@@ -142,7 +142,7 @@ public class ChallengeStore
 	}
 
 	@Nullable
-	public Membership find(String code)
+	public synchronized Membership find(String code)
 	{
 		for (Membership membership : memberships)
 		{
@@ -159,7 +159,7 @@ public class ChallengeStore
 	 * Adds a challenge, or updates one already known. Tokens already held are kept when the incoming
 	 * copy has none — a refresh from the service carries the challenge but not the secrets.
 	 */
-	public void put(Challenge challenge, @Nullable String creatorToken, @Nullable String participantToken)
+	public synchronized void put(Challenge challenge, @Nullable String creatorToken, @Nullable String participantToken)
 	{
 		Membership existing = find(challenge.getCode());
 
@@ -184,21 +184,21 @@ public class ChallengeStore
 		save();
 	}
 
-	public void remove(String code)
+	public synchronized void remove(String code)
 	{
 		memberships.removeIf(membership -> membership.challenge.getCode().equalsIgnoreCase(code));
 		save();
 	}
 
 	@Nullable
-	public String participantTokenFor(String code)
+	public synchronized String participantTokenFor(String code)
 	{
 		Membership membership = find(code);
 		return membership == null ? null : membership.participantToken;
 	}
 
 	@Nullable
-	public String creatorTokenFor(String code)
+	public synchronized String creatorTokenFor(String code)
 	{
 		Membership membership = find(code);
 		return membership == null ? null : membership.creatorToken;

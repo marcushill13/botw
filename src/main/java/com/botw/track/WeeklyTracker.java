@@ -128,7 +128,7 @@ public class WeeklyTracker
 			return;
 		}
 		String message = Text.removeTags(event.getMessage());
-		Matcher raid = COMPLETION.matcher(message);
+		Matcher raid = completionMessage(event.getMessage());
 		Matcher rift = RIFTS.matcher(message);
 		boolean completion = raid.matches();
 		boolean riftClosed = rift.matches();
@@ -152,7 +152,12 @@ public class WeeklyTracker
 		if (!recorded.isEmpty()) outbox.add(recorded);
 	}
 
-	private static int realLevel(int xp)
+	static Matcher completionMessage(String message)
+	{
+		return COMPLETION.matcher(Text.removeTags(message));
+	}
+
+	static int realLevel(int xp)
 	{
 		return Math.min(Experience.MAX_REAL_LEVEL, Experience.getLevelForXp(xp));
 	}

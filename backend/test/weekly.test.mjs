@@ -65,11 +65,15 @@ test('skill scores count XP once and keep level gains and verified-by-staff priz
 		app.event('wrong', 'xp', 99999, 'Smithing'),
 		app.event('early', 'xp', 99999, 'Slayer', app.now - 5000)])).accepted, 2);
 	await alice([xp]);
+	const adjustment = await app.request('PATCH', '/' + code + '/participants/Alice', { points: 10500 },
+		{ 'X-Creator-Token': creatorToken });
+	assert.equal(adjustment.status, 200);
+	await alice([app.event('xp-after-edit', 'xp', 100, 'Slayer')]);
 	await bob([app.event('xp2', 'xp', 20000, 'Slayer'), app.event('p2', 'drop', 1, 'Imbued heart', app.now + 1)]);
 	await alice([app.event('p1', 'drop', 1, 'Imbued heart')]);
 	const board = await app.board(code);
 	assert.deepEqual(board.leaderboard.map(row => [row.rsn, row.points, row.levels]),
-		[['Bob', 20000, 0], ['Alice', 10000, 2]]);
+		[['Bob', 20000, 0], ['Alice', 10600, 2]]);
 	assert.equal(board.challenge.prizeCandidates[0].rsn, 'Alice');
 	const edit = await app.request('PATCH', '/' + code, { boss: 'Smithing' }, { 'X-Creator-Token': creatorToken });
 	assert.equal(edit.status, 400);
@@ -87,7 +91,9 @@ test('raid weights distinguish modes and only marked purples count toward the pu
 	await send([app.event('r1', 'raid', 1, 'Expert'), app.event('r2', 'raid', 1, 'Normal'),
 		app.event('r3', 'raid', 1, 'Hard'), app.event('r4', 'drop', 1, 'Lightbearer'),
 		app.event('r5', 'drop', 1, "Tumeken's guardian")]);
-	let row = (await app.board(code)).leaderboard[0];
+	const raidBoard = await app.board(code);
+	assert.equal(raidBoard.challenge.prizeCandidates.find(row => row.category === 'clear').itemName, 'Expert');
+	let row = raidBoard.leaderboard[0];
 	assert.equal(row.points, 20);
 	assert.equal(row.kills, 2);
 	assert.deepEqual(row.raidModes, { Expert: 1, Normal: 1 });

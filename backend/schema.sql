@@ -116,10 +116,12 @@ CREATE INDEX IF NOT EXISTS events_by_prize
 -- A retry is ignored by the INSERT, so the trigger cannot pay the same XP twice.
 CREATE TRIGGER IF NOT EXISTS weekly_xp_totals AFTER INSERT ON events
 WHEN NEW.kind IN ('xp', 'level')
+  OR (NEW.kind = 'drop' AND (SELECT event_type FROM challenges WHERE code = NEW.challenge_code) = 'SKILL')
 BEGIN
 	UPDATE participants SET
 		points = points + CASE WHEN NEW.kind = 'xp' THEN NEW.points ELSE 0 END,
-		levels = levels + CASE WHEN NEW.kind = 'level' THEN NEW.amount ELSE 0 END
+		levels = levels + CASE WHEN NEW.kind = 'level' THEN NEW.amount ELSE 0 END,
+		drops = drops + CASE WHEN NEW.kind = 'drop' THEN 1 ELSE 0 END
 	WHERE challenge_code = NEW.challenge_code AND rsn = NEW.rsn;
 END;
 

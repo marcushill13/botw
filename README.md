@@ -26,7 +26,7 @@ dates, creator controls, evidence and Discord leaderboard controls.
 | Event | Main leaderboard | Extra rankings and prizes |
 | --- | --- | --- |
 | Boss | Configured kill and drop points | Existing boss rules |
-| Raid | Most clears or editable points per mode and per drop | Clears, clears by difficulty, purples, and first drop candidates |
+| Raid | Most clears or editable points per mode and per drop | Clears, clears by difficulty, purples, first recorded clear and first drop candidates |
 | Skill | XP gained in one selected skill | Levels gained and optional first drop candidates |
 | Clue | Opened caskets of one selected tier | Optional first drop candidates; Medium starts with Ranger boots |
 | Minigame | Guardians of the Rift rifts closed | First Abyssal needle, lantern and protector candidates |

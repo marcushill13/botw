@@ -4,6 +4,9 @@ import com.botw.BotwConfig;
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
 import com.botw.data.ChallengeType;
+import com.botw.data.DropRule;
+import com.botw.data.MinigameTarget;
+import com.botw.data.WeeklyRewards;
 import com.botw.data.WeeklyTargets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -19,9 +22,11 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.NPC;
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.NpcLootReceived;
+import net.runelite.client.events.ServerNpcLoot;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.loottracker.LootReceived;
@@ -84,6 +89,11 @@ public class KillTracker
 	 */
 	private static final long PET_WINDOW_MS = 60_000;
 
+	private static final List<Integer> SEPULCHRE_REGIONS = Arrays.asList(
+		8797, 9051, 9052, 9053, 9054, 9309, 9563, 9565, 9821, 10074, 10075, 10077);
+
+	private enum LootSource { GROUND, EVENT, SERVER }
+
 	private static final String COLLECTION_LOG = "New item added to your collection log: ";
 	private static final long NAMED_PET_DEDUP_MS = 6_000;
 	private final Map<String, Long> namedPets = new HashMap<>();
@@ -142,7 +152,7 @@ public class KillTracker
 			return;
 		}
 
-		record(npc.getName(), event.getItems(), 1, false);
+		record(npc.getName(), event.getItems(), 1, LootSource.GROUND);
 	}
 
 	@Subscribe
@@ -154,7 +164,25 @@ public class KillTracker
 		}
 
 		// A chest can pay out for several kills at once; the amount says how many.
-		record(event.getName(), event.getItems(), Math.max(1, event.getAmount()), true);
+		record(event.getName(), event.getItems(), Math.max(1, event.getAmount()), LootSource.EVENT);
+	}
+
+	@Subscribe
+	public void onServerNpcLoot(ServerNpcLoot event)
+	{
+		// The game sends dedicated loot records for these activities, including coffins and
+		// Gauntlet chests. Use the original event; ignore the Loot Tracker's NPC echo.
+		if (event.getComposition() == null || event.getComposition().getName() == null) return;
+		String source = Text.removeTags(event.getComposition().getName());
+		if (Arrays.stream(MinigameTarget.values()).anyMatch(target -> target.usesServerLoot() && target.matchesLoot(source)))
+		{
+			record(source, event.getItems(), 1, LootSource.SERVER);
+		}
+	}
+
+	static int valeRolls(int offerings)
+	{
+		return offerings > 0 && offerings % 100 == 0 ? offerings / 100 : 0;
 	}
 
 	/**
@@ -263,7 +291,7 @@ public class KillTracker
 	 * @param items  everything that dropped
 	 * @param kills  how many kills this payout covers, which is more than one for a chest
 	 */
-	private void record(String source, Collection<ItemStack> items, int kills, boolean chest)
+	private void record(String source, Collection<ItemStack> items, int kills, LootSource origin)
 	{
 		long now = System.currentTimeMillis();
 		List<PendingEvent> recorded = new ArrayList<>();
@@ -277,43 +305,47 @@ public class KillTracker
 			{
 				continue;
 			}
-			boolean count;
+			if (origin == LootSource.SERVER && challenge.getEventType() != ChallengeType.MINIGAME) continue;
+			int completions;
 			boolean petSource = false;
 			switch (challenge.getEventType())
 			{
 				case RAID:
-					if (!chest || !WeeklyTargets.raidSource(challenge.getBoss(), source)) continue;
-					count = false; // Raid KC comes from the completion message, not the chest.
+					if (origin != LootSource.EVENT || !WeeklyTargets.raidSource(challenge.getBoss(), source)) continue;
+					completions = 0; // Raid KC comes from the completion message, not the chest.
 					break;
 				case CLUE:
-					if (!chest || !source.equalsIgnoreCase("Clue Scroll (" + challenge.getBoss() + ")")) continue;
-					count = true;
+					if (origin != LootSource.EVENT || !source.equalsIgnoreCase("Clue Scroll (" + challenge.getBoss() + ")")) continue;
+					completions = kills;
 					break;
 				case MINIGAME:
-					if (!chest || !source.equalsIgnoreCase(challenge.getBoss())) continue;
-					count = false; // Searches at the Reward Guardian are not closed rifts.
+					MinigameTarget target = MinigameTarget.forName(challenge.getBoss());
+					if (target == null || !target.matchesLoot(source) || origin == LootSource.GROUND
+						|| (origin == LootSource.SERVER && !target.usesServerLoot())) continue;
+					// Vale is scored by using offerings; all other minigames score on completion.
+					completions = target == MinigameTarget.VALE ? valeRolls(kills) : 0;
 					break;
 				case SKILL:
-					count = false;
+					completions = 0;
 					break;
 				default:
 					if (!matches(challenge.getBoss(), source)) continue;
-					count = true;
+					completions = kills;
 					petSource = true;
 			}
 			if (petSource) lastKillAt.put(challenge.getCode(), now);
 
-			for (int i = 0; count && i < kills; i++)
+			for (int remaining = completions; remaining > 0; remaining -= 1000)
 			{
-				recorded.add(PendingEvent.kill(challenge.getCode(), now));
+				recorded.add(PendingEvent.kills(challenge.getCode(), Math.min(1000, remaining), now));
 			}
 
 			if (items != null)
 			{
 				for (ItemStack stack : items)
 				{
-					String name = itemName(stack);
-					if (name != null && challenge.counts(name))
+					String name = stack == null ? null : scoringItem(challenge, stack);
+					if (name != null)
 					{
 						if (challenge.getEventType() != ChallengeType.BOSS && isNamedPet(challenge, name)
 							&& !newPetNotice(challenge, name, now)) continue;
@@ -378,7 +410,7 @@ public class KillTracker
 		for (Challenge challenge : challenges.joined())
 		{
 			if (challenge.isRunning(now) && challenge.counts(item) && isNamedPet(challenge, item)
-				&& newPetNotice(challenge, item, now))
+				&& petNoticeMatchesActivity(challenge) && newPetNotice(challenge, item, now))
 			{
 				recorded.add(scoringDrop(challenge, item, 1, now));
 			}
@@ -393,13 +425,32 @@ public class KillTracker
 		return namedPets.put(key, now) == null;
 	}
 
+	private boolean petNoticeMatchesActivity(Challenge challenge)
+	{
+		if (challenge.getEventType() != ChallengeType.MINIGAME) return true;
+		MinigameTarget target = MinigameTarget.forName(challenge.getBoss());
+		if (target == MinigameTarget.GAUNTLET || target == MinigameTarget.CORRUPTED)
+		{
+			// A bare Youngllef notice does not identify which mode paid out.
+			return false;
+		}
+		if (target == MinigameTarget.SEPULCHRE)
+		{
+			return client.getLocalPlayer() != null
+				&& SEPULCHRE_REGIONS.contains(WorldPoint.fromLocalInstance(client, client.getLocalPlayer().getLocalLocation()).getRegionID());
+		}
+		return true;
+	}
+
 	private boolean isNamedPet(Challenge challenge, String item)
 	{
 		switch (challenge.getEventType())
 		{
 			case RAID: return item.equalsIgnoreCase(WeeklyTargets.raidPet(challenge.getBoss()));
 			case SKILL: return bossDrops.isPet(item);
-			case MINIGAME: return item.equalsIgnoreCase("Abyssal protector");
+			case MINIGAME:
+				MinigameTarget target = MinigameTarget.forName(challenge.getBoss());
+				return target != null && item.equalsIgnoreCase(target.pet);
 			case CLUE: return "Master".equals(challenge.getBoss()) && item.equalsIgnoreCase("Bloodhound");
 			default: return false;
 		}
@@ -454,21 +505,35 @@ public class KillTracker
 		return got.equals(wanted) || got.startsWith(wanted + " (") || wanted.startsWith(got + " (");
 	}
 
-	/**
-	 * The item's name. Names rather than ids because that is what the creator sets the points against,
-	 * and because an item can arrive under any of several ids.
-	 * <p>
-	 * Safe to call here: both loot events are posted on the client thread, which is the only thread
-	 * allowed to read an item's composition.
-	 */
-	private String itemName(ItemStack stack)
+	/** Resolve a drop back to the name the creator configured, which is also the server's key. */
+	private String scoringItem(Challenge challenge, ItemStack stack)
 	{
-		if (stack == null)
+		ItemComposition composition = itemManager.getItemComposition(stack.getId());
+		if (composition == null) return null;
+		if (challenge.getEventType() == ChallengeType.BOSS)
 		{
-			return null;
+			String name = composition.getName();
+			return name != null && challenge.counts(name) ? name : null;
 		}
 
-		ItemComposition composition = itemManager.getItemComposition(stack.getId());
-		return composition == null ? null : composition.getName();
+		String name = composition.getMembersName();
+		if (name == null) return null;
+		int id = itemManager.canonicalize(stack.getId());
+		for (DropRule rule : challenge.getDrops())
+		{
+			if (rule.getPoints() == 0 && !rule.isFirstPrize() && !rule.isPurple()) continue;
+			int preset = WeeklyRewards.spriteId(rule);
+			if (rule.getName().equalsIgnoreCase(name) || (preset > 0 && itemManager.canonicalize(preset) == id)
+				|| rewardName(rule.getName()).equals(rewardName(name)))
+			{
+				return rule.getName();
+			}
+		}
+		return null;
+	}
+
+	static String rewardName(String item)
+	{
+		return item.toLowerCase(Locale.ROOT).replaceFirst(" \\((uncharged|full|empty)\\)$", "");
 	}
 }

@@ -322,7 +322,7 @@ public class BotwPanel extends PluginPanel
 		list.add(Cards.gap(8));
 		list.add(new TileButton("Create a Clue Challenge", "Count caskets by tier", () -> showCreate(ChallengeType.CLUE)));
 		list.add(Cards.gap(8));
-		list.add(new TileButton("Create a Minigame Challenge", "Guardians of the Rift", () -> showCreate(ChallengeType.MINIGAME)));
+		list.add(new TileButton("Create a Minigame Challenge", "Pick a minigame", () -> showCreate(ChallengeType.MINIGAME)));
 		list.add(Cards.gap(8));
 		list.add(new TileButton("Join a challenge", "Enter a code from your clan", this::showJoin));
 

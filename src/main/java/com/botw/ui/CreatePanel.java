@@ -3,6 +3,8 @@ package com.botw.ui;
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
 import com.botw.data.ChallengeType;
+import com.botw.data.MinigameTarget;
+import com.botw.data.WeeklyRewards;
 import com.botw.data.WeeklyTargets;
 import com.botw.data.DropRule;
 import java.awt.BorderLayout;
@@ -58,6 +60,7 @@ public class CreatePanel extends JPanel
 	private final JComboBox<String> weeklyPicker;
 	private final JCheckBox raidByPoints = new JCheckBox("Rank by points");
 	private final Map<String, JSpinner> raidPoints = new LinkedHashMap<>();
+	private final JPanel targetPreview = new JPanel(new BorderLayout());
 	private final JPanel modeList = new JPanel();
 	private final ItemManager itemManager;
 
@@ -155,6 +158,11 @@ public class CreatePanel extends JPanel
 			if (editing != null) weeklyPicker.setSelectedItem(editing.getBoss());
 			weeklyPicker.setEnabled(editing == null);
 			form.add(Cards.field(type == ChallengeType.CLUE ? "Clue tier" : type.name().toLowerCase(java.util.Locale.ROOT), weeklyPicker));
+			targetPreview.setOpaque(false);
+			targetPreview.setAlignmentX(Component.LEFT_ALIGNMENT);
+			form.add(Cards.gap(5));
+			form.add(targetPreview);
+			form.add(Cards.gap(5));
 			if (type == ChallengeType.RAID)
 			{
 				raidByPoints.setSelected(editing != null && editing.isRaidByPoints());
@@ -169,12 +177,7 @@ public class CreatePanel extends JPanel
 				modeList.setAlignmentX(Component.LEFT_ALIGNMENT);
 				form.add(modeList);
 			}
-			else
-			{
-				form.add(Cards.muted(type == ChallengeType.SKILL ? "Ranked by XP gained. Levels are tracked separately."
-					: type == ChallengeType.CLUE ? "One count per casket opened during the event."
-					: "Ranked by rifts closed. Reward searches do not count as closes."));
-			}
+
 		}
 		form.add(Cards.gap(8));
 
@@ -276,7 +279,7 @@ public class CreatePanel extends JPanel
 			case RAID: return WeeklyTargets.RAIDS;
 			case SKILL: return WeeklyTargets.skills();
 			case CLUE: return WeeklyTargets.CLUES;
-			case MINIGAME: return new String[] { WeeklyTargets.RIFT };
+			case MINIGAME: return MinigameTarget.names();
 			default: return new String[0];
 		}
 	}
@@ -285,6 +288,11 @@ public class CreatePanel extends JPanel
 	{
 		String target = (String) weeklyPicker.getSelectedItem();
 		if (target == null) return;
+		targetPreview.removeAll();
+		targetPreview.add(WeeklyBadge.create(itemManager, type, target, target, WeeklyBadge.scoring(type, target)));
+		targetPreview.setMaximumSize(new Dimension(Integer.MAX_VALUE, targetPreview.getPreferredSize().height));
+		targetPreview.revalidate();
+		targetPreview.repaint();
 		drops.clear();
 		raidPoints.clear();
 		modeList.removeAll();
@@ -320,13 +328,17 @@ public class CreatePanel extends JPanel
 				weeklyDrop(drop, true, false);
 			}
 		}
-		else if (type == ChallengeType.CLUE && "Medium".equals(target))
+		else if (type == ChallengeType.CLUE)
 		{
-			weeklyDrop("Ranger boots", true, false);
+			for (String drop : WeeklyRewards.cluePrizes(target))
+			{
+				weeklyDrop(drop, true, false);
+			}
 		}
 		else if (type == ChallengeType.MINIGAME)
 		{
-			for (String drop : new String[] { "Abyssal needle", "Abyssal lantern", "Abyssal protector" })
+			MinigameTarget activity = MinigameTarget.forName(target);
+			for (String drop : activity == null ? new String[0] : activity.rewards())
 			{
 				weeklyDrop(drop, true, false);
 			}
@@ -338,8 +350,12 @@ public class CreatePanel extends JPanel
 
 	private void weeklyDrop(String name, boolean first, boolean purple)
 	{
-		int id = itemManager.search(name).stream().filter(item -> item.getName().equalsIgnoreCase(name))
-			.mapToInt(ItemPrice::getId).findFirst().orElse(-1);
+		int id = WeeklyRewards.itemId(name);
+		if (id <= 0)
+		{
+			id = itemManager.search(name).stream().filter(item -> item.getName().equalsIgnoreCase(name))
+				.mapToInt(ItemPrice::getId).findFirst().orElse(-1);
+		}
 		drops.put(name, new DropRule(name, id, 0, first, purple));
 	}
 
@@ -502,13 +518,14 @@ public class CreatePanel extends JPanel
 
 		JLabel icon = new JLabel();
 		icon.setPreferredSize(new Dimension(32, 28));
-		if (rule.getItemId() > 0)
+		int sprite = WeeklyRewards.spriteId(rule);
+		if (sprite > 0)
 		{
-			itemManager.getImage(rule.getItemId()).addTo(icon);
+			itemManager.getImage(sprite).addTo(icon);
 		}
 		row.add(icon, BorderLayout.WEST);
 
-		JLabel label = new JLabel("<html><body style='width:72px'>" + rule.getName() + "</body></html>");
+		JLabel label = new JLabel("<html><body style='width:72px'>" + Cards.escape(rule.getName()) + "</body></html>");
 		label.setFont(Theme.body());
 		label.setForeground(Theme.TEXT);
 		row.add(label, BorderLayout.CENTER);

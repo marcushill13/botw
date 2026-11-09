@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import worker from '../src/index.js';
 import { hiscores } from '../src/discord.js';
+import { presentation } from '../src/weekly.js';
 
 const schema = readFileSync(new URL('../schema.sql', import.meta.url), 'utf8');
 const migration = readFileSync(new URL('../migrations/004-weekly-challenges.sql', import.meta.url), 'utf8');
@@ -142,4 +143,26 @@ test('migration adds weekly columns while keeping existing boss participants and
 	assert.equal(db.prepare('SELECT points FROM participants').get().points, 77);
 	assert.equal(db.prepare('SELECT message_id FROM discord_boards').get().message_id, 'message123');
 	assert.equal(db.prepare('SELECT rank_limit FROM discord_boards').get().rank_limit, 20);
+});
+
+test('new minigames use their own leaderboard units and track prizes separately from scores', async () =>
+{
+	const app = service();
+	for (const [target, unit] of [
+		['Vale Totems', 'ROLLS'], ['Volcanic Mine', 'RUNS'], ['Hallowed Sepulchre', 'FLOORS'],
+		['The Gauntlet', 'CLEARS'], ['Corrupted Gauntlet', 'CLEARS'], ['Zalcano', 'KILLS'], ['Tempoross', 'WINS']
+	])
+	{
+		const { code } = await app.create(target, 'MINIGAME', {
+			drops: [{ name: 'Prize item', points: 10, firstPrize: true }]
+		});
+		const send = await app.player(code, 'Competitor');
+		const score = app.event(target + '-run', 'kc', 3);
+		assert.equal((await send([score, app.event(target + '-prize', 'drop', 1, 'Prize item')])).accepted, 2);
+		await send([score]);
+		const { challenge, leaderboard } = await app.board(code);
+		assert.equal(leaderboard[0].points, 3);
+		assert.equal(challenge.prizeCandidates[0].itemName, 'Prize item');
+		assert.equal(presentation({ event_type: 'MINIGAME', boss: challenge.boss }).score, unit);
+	}
 });

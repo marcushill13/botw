@@ -3,6 +3,7 @@ package com.botw.ui;
 import com.botw.data.Challenge;
 import com.botw.data.ChallengeType;
 import com.botw.data.PrizeCandidate;
+import com.botw.data.WeeklyRewards;
 import com.botw.data.WeeklyTargets;
 import com.botw.data.DropRule;
 import com.botw.data.LeaderboardEntry;
@@ -152,10 +153,14 @@ public class ChallengeView extends JPanel
 
 		body.add(Cards.title(challenge.getName()));
 		body.add(Cards.gap(2));
-		body.add(Cards.body(challenge.getBoss()));
-		if (challenge.getEventType() != ChallengeType.BOSS)
+		if (challenge.getEventType() == ChallengeType.BOSS)
 		{
-			body.add(Cards.muted(challenge.getEventType().title()));
+			body.add(Cards.body(challenge.getBoss()));
+		}
+		else
+		{
+			body.add(WeeklyBadge.create(itemManager, challenge.getEventType(), challenge.getBoss(),
+				challenge.getBoss(), challenge.getEventType().title()));
 		}
 		body.add(Cards.gap(6));
 
@@ -230,7 +235,16 @@ public class ChallengeView extends JPanel
 		body.add(pointsList(challenge));
 
 		body.add(Cards.gap(10));
-		body.add(Cards.sectionLabel("Leaderboard · " + challenge.scoreUnit()));
+		if (challenge.getEventType() == ChallengeType.BOSS)
+		{
+			body.add(Cards.sectionLabel("Leaderboard · " + challenge.scoreUnit()));
+		}
+		else
+		{
+			String metric = challenge.getEventType() == ChallengeType.SKILL ? "XP gained · Levels gained" : challenge.scoreUnit();
+			body.add(WeeklyBadge.create(itemManager, challenge.getEventType(), challenge.getBoss(), "Leaderboard", metric));
+			body.add(Cards.gap(4));
+		}
 		if (challenge.getEventType() == ChallengeType.SKILL || challenge.getEventType() == ChallengeType.RAID)
 		{
 			List<String> choices = new ArrayList<>();
@@ -501,7 +515,7 @@ public class ChallengeView extends JPanel
 			if (!scores && !drop.isFirstPrize() && !drop.isPurple()) continue;
 			list.add(Cards.gap(2));
 			String value = scores ? drop.getPoints() + " pts" : drop.isFirstPrize() ? "First" : "Purple";
-			list.add(row(drop.getItemId(), drop.getName(), value, Theme.TEXT));
+			list.add(row(WeeklyRewards.spriteId(drop), drop.getName(), value, Theme.TEXT));
 		}
 
 		return list;
@@ -646,7 +660,7 @@ public class ChallengeView extends JPanel
 						break;
 					}
 				}
-				prizeHolder.add(Cards.muted(rule.getName() + ": " + holder));
+				prizeHolder.add(row(WeeklyRewards.spriteId(rule), rule.getName() + ": " + holder, "", Theme.TEXT));
 			}
 		}
 		prizeHolder.revalidate();
@@ -1012,7 +1026,7 @@ public class ChallengeView extends JPanel
 			row.add(icon, BorderLayout.WEST);
 		}
 
-		JLabel name = new JLabel("<html><body style='width:105px'>" + label + "</body></html>");
+		JLabel name = new JLabel("<html><body style='width:105px'>" + Cards.escape(label) + "</body></html>");
 		name.setFont(FontManager.getRunescapeSmallFont());
 		name.setForeground(colour);
 		row.add(name, BorderLayout.CENTER);

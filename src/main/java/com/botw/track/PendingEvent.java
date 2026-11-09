@@ -39,8 +39,13 @@ public class PendingEvent
 
 	public static PendingEvent kill(String challengeCode, long occurredAt)
 	{
+		return kills(challengeCode, 1, occurredAt);
+	}
+
+	public static PendingEvent kills(String challengeCode, int amount, long occurredAt)
+	{
 		return new PendingEvent(
-			challengeCode, UUID.randomUUID().toString(), "kc", null, 1, occurredAt);
+			challengeCode, UUID.randomUUID().toString(), "kc", null, amount, occurredAt);
 	}
 
 	public static PendingEvent drop(String challengeCode, String itemName, int quantity, long occurredAt)

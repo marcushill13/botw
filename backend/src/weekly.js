@@ -4,6 +4,16 @@ const RAID_MODES = {
 	'Tombs of Amascut': ['Entry', 'Normal', 'Expert'],
 	'The Fractured Archive': ['Normal']
 };
+const MINIGAME_UNITS = {
+	'Guardians of the Rift': 'RIFTS',
+	'Vale Totems': 'ROLLS',
+	'Volcanic Mine': 'RUNS',
+	'Hallowed Sepulchre': 'FLOORS',
+	'The Gauntlet': 'CLEARS',
+	'Corrupted Gauntlet': 'CLEARS',
+	'Zalcano': 'KILLS',
+	'Tempoross': 'WINS'
+};
 const SKILLS = new Set(('Attack Defence Strength Hitpoints Ranged Prayer Magic Cooking Woodcutting '
 	+ 'Fletching Fishing Firemaking Crafting Smithing Mining Herblore Agility Thieving Slayer Farming '
 	+ 'Runecraft Hunter Construction Sailing').split(' '));
@@ -28,7 +38,7 @@ export function validateWeekly(body)
 	{
 		return ['Beginner', 'Easy', 'Medium', 'Hard', 'Elite', 'Master'].includes(target) ? null : 'Choose a clue tier';
 	}
-	if (type === 'MINIGAME') return target === 'Guardians of the Rift' ? null : 'Choose a supported minigame';
+	if (type === 'MINIGAME') return Object.hasOwn(MINIGAME_UNITS, target) ? null : 'Choose a supported minigame';
 	if (type !== 'RAID' || !Object.hasOwn(RAID_MODES, target)) return 'Choose a supported raid';
 	if (body.raidByPoints !== undefined && typeof body.raidByPoints !== 'boolean') return 'Choose a raid ranking';
 	const weights = body.raidPoints ?? {};
@@ -90,7 +100,7 @@ export function presentation(challenge)
 		case 'RAID': return { title: 'RAID OF THE WEEK', target: 'Raid', score: optionsOf(challenge).raidByPoints ? 'POINTS' : 'CLEARS' };
 		case 'SKILL': return { title: 'SKILL OF THE WEEK', target: 'Skill', score: 'XP' };
 		case 'CLUE': return { title: 'CLUE OF THE WEEK', target: 'Tier', score: 'CLUES' };
-		case 'MINIGAME': return { title: 'MINIGAME OF THE WEEK', target: 'Minigame', score: 'RIFTS' };
+		case 'MINIGAME': return { title: 'MINIGAME OF THE WEEK', target: 'Minigame', score: Object.hasOwn(MINIGAME_UNITS, challenge.boss) ? MINIGAME_UNITS[challenge.boss] : 'CLEARS' };
 		default: return { title: 'BOSS OF THE WEEK', target: 'Boss', score: 'POINTS' };
 	}
 }

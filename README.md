@@ -28,14 +28,24 @@ dates, creator controls, evidence and Discord leaderboard controls.
 | Boss | Configured kill and drop points | Existing boss rules |
 | Raid | Most clears or editable points per mode and per drop | Clears, clears by difficulty, purples, first recorded clear and first drop candidates |
 | Skill | XP gained in one selected skill | Levels gained and optional first drop candidates |
-| Clue | Opened caskets of one selected tier | Optional first drop candidates; Medium starts with Ranger boots |
-| Minigame | Guardians of the Rift rifts closed | First Abyssal needle, lantern and protector candidates |
+| Clue | Opened caskets of one selected tier | Five editable first prize presets per tier, including Ranger boots for Medium |
+| Minigame | Completions for the chosen activity | Optional first prize candidates from its reward table |
 
 Raid presets cover Chambers of Xeric, Theatre of Blood, Tombs of Amascut and The Fractured Archive.
 Points mode starts at one point per clear and zero per item. Set the actual values for your clan
 when creating the event. First prize candidates are separate from rankings unless you explicitly
 assign a drop points in raid Points mode. Clan staff still decide which claim qualifies, including
 first solo or team clears, and award prizes themselves.
+
+| Minigame | What scores |
+| --- | --- |
+| Guardians of the Rift | Successful rift closes |
+| Vale Totems | One reward roll per 100 offerings rummaged, including banked offerings |
+| Volcanic Mine | Runs that pay the Mining XP bonus on exit |
+| Hallowed Sepulchre | Each completed floor |
+| The Gauntlet / Corrupted Gauntlet | Clears in the selected mode |
+| Zalcano | Kills credited to the player |
+| Tempoross | Successful rounds |
 
 Participants join the challenge on the character they play and keep RuneLite open with BOTW
 enabled. Enable RuneLite's Loot Tracker for chest drops and caskets. XP is counted as the plugin

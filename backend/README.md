@@ -98,7 +98,8 @@ npx wrangler d1 execute botw-discord-test --remote --config .\wrangler.test.toml
 npx wrangler deploy --config .\wrangler.test.toml
 ```
 
-Apply 004 once to a database that already exists. For a brand new test database, use
+Apply 004 once to a database that already exists. If you already tested weekly events on this
+Worker, skip the migration and just redeploy the Worker. For a brand new test database, use
 `schema.sql` instead. Only proceed to deploy when the migration succeeds. The test configuration
 should name the test Worker and database and have one `* * * * *` cron.
 
@@ -107,8 +108,11 @@ the test Worker. Create and join challenges with a start time already passed and
 the future. Try a small XP gain, an opened casket of the selected tier, and a clear in each raid mode
 you plan to use. Skill XP is batched for up to a minute; Refresh reads the current scores. For
 Guardians of the Rift, check that completing a round counts and searching the guardian does not
-add another completion. Confirm a first prize drop doesn't increase XP or clue scores. Use a private
-Discord webhook to check the correct event title and score column.
+add another completion. For new minigames, compare one run with the score units listed in the
+[main README](../README.md#weekly-events). Try both a rewarded exit and an early teleport in
+Volcanic Mine. Confirm opening a reward chest separately doesn't add a completion, and that
+rummaging 100 Vale offerings adds one roll. Confirm a first prize drop doesn't increase XP or clue
+scores. Use a private Discord webhook to check the correct event title and score column.
 
 The backend tests require Node 22.13 or later for the SQLite integration tests:
 `node --test backend/test/*.test.mjs`.

@@ -46,7 +46,9 @@ public class Challenge
 		{
 			case SKILL: return "XP";
 			case CLUE: return "clues";
-			case MINIGAME: return "rifts";
+			case MINIGAME:
+				MinigameTarget target = MinigameTarget.forName(boss);
+				return target == null ? "completions" : target.unit;
 			case RAID: return raidByPoints ? "points" : "clears";
 			default: return "points";
 		}

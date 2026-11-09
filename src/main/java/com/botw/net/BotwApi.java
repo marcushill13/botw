@@ -121,6 +121,9 @@ public class BotwApi
 		body.addProperty("kcPoints", challenge.getKcPoints());
 		body.addProperty("creatorRsn", creatorRsn);
 		body.add("drops", gson.toJsonTree(challenge.getDrops()));
+		body.addProperty("eventType", challenge.getEventType().name());
+		body.addProperty("raidByPoints", challenge.isRaidByPoints());
+		body.add("raidPoints", gson.toJsonTree(challenge.getRaidPoints()));
 
 		return send(new Request.Builder()
 			.url(url(baseUrl, "v1", "challenges"))
@@ -155,6 +158,9 @@ public class BotwApi
 		body.addProperty("kcPer", challenge.getKcPer());
 		body.addProperty("kcPoints", challenge.getKcPoints());
 		body.add("drops", gson.toJsonTree(challenge.getDrops()));
+		body.addProperty("eventType", challenge.getEventType().name());
+		body.addProperty("raidByPoints", challenge.isRaidByPoints());
+		body.add("raidPoints", gson.toJsonTree(challenge.getRaidPoints()));
 
 		return send(new Request.Builder()
 			.url(url(baseUrl, "v1", "challenges", challenge.getCode()))

@@ -1,5 +1,7 @@
 package com.botw.data;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -14,6 +16,9 @@ public class LeaderboardEntry
 	private int points;
 	private int kills;
 	private int drops;
+	private int levels;
+	private int purples;
+	private Map<String, Integer> raidModes = new LinkedHashMap<>();
 
 	/**
 	 * Added by the creator rather than having joined from a plugin — a mobile player, whose kills

@@ -18,6 +18,7 @@
  */
 
 import { connectDiscord, removeDiscord, syncDiscordBoards } from './discord.js';
+import { eventPoints, optionsOf, typeOf, validateWeekly, weeklyOptions } from './weekly.js';
 
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -202,8 +203,8 @@ async function createChallenge(request, env)
 	await env.DB.prepare(
 		`INSERT INTO challenges
 			(code, name, boss, starts_at, ends_at, timezone, kc_per, kc_points, drops,
-			 creator_token, creator_rsn, created_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+			 creator_token, creator_rsn, created_at, event_type, event_options)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 		.bind(
 			code,
 			body.name.trim(),
@@ -216,7 +217,9 @@ async function createChallenge(request, env)
 			JSON.stringify(normaliseDrops(body.drops)),
 			creatorToken,
 			body.creatorRsn.trim(),
-			now)
+			now,
+			body.eventType ?? 'BOSS',
+			JSON.stringify(weeklyOptions(body)))
 		.run();
 
 	// The creator is not entered automatically. Running a challenge and competing in it are separate
@@ -240,7 +243,10 @@ async function readChallenge(code, env)
 	}
 
 	return json({
-		challenge: publicChallenge(challenge),
+		challenge: {
+			...publicChallenge(challenge),
+			prizeCandidates: await prizeCandidates(challenge, env)
+		},
 		leaderboard: await leaderboardFor(code, env),
 		discordRankLimit: challenge.discord_rank_limit
 	});
@@ -260,7 +266,13 @@ async function updateChallenge(code, request, env)
 	}
 
 	const body = await readJson(request);
-	const problem = validateChallenge({ ...publicChallenge(challenge), creatorRsn: challenge.creator_rsn, ...body });
+	const updatedRules = { ...publicChallenge(challenge), ...body, creatorRsn: challenge.creator_rsn };
+	if (updatedRules.eventType !== typeOf(challenge)
+		|| (typeOf(challenge) !== 'BOSS' && String(updatedRules.boss).trim() !== challenge.boss))
+	{
+		return json({ error: 'The event type and target cannot be changed after creation' }, 400);
+	}
+	const problem = validateChallenge(updatedRules);
 	if (problem)
 	{
 		return json({ error: problem }, 400);
@@ -269,7 +281,7 @@ async function updateChallenge(code, request, env)
 	await env.DB.prepare(
 		`UPDATE challenges
 		    SET name = ?, boss = ?, starts_at = ?, ends_at = ?, timezone = ?,
-		        kc_per = ?, kc_points = ?, drops = ?
+		        kc_per = ?, kc_points = ?, drops = ?, event_options = ?
 		  WHERE code = ?`)
 		.bind(
 			(body.name ?? challenge.name).trim(),
@@ -279,7 +291,8 @@ async function updateChallenge(code, request, env)
 			body.timezone ?? challenge.timezone,
 			body.kcPer ?? challenge.kc_per,
 			body.kcPoints ?? challenge.kc_points,
-			JSON.stringify(normaliseDrops(body.drops ?? JSON.parse(challenge.drops))),
+			JSON.stringify(normaliseDrops(updatedRules.drops)),
+			JSON.stringify(weeklyOptions(updatedRules)),
 			code)
 		.run();
 
@@ -394,7 +407,7 @@ async function submitEvents(code, request, env)
 	}
 
 	const body = await readJson(request);
-	const submitted = Array.isArray(body.events) ? body.events : [];
+	const submitted = Array.isArray(body?.events) ? body.events : [];
 	if (submitted.length > MAX_EVENTS_PER_REQUEST)
 	{
 		return json({ error: `No more than ${MAX_EVENTS_PER_REQUEST} events at a time` }, 400);
@@ -403,10 +416,11 @@ async function submitEvents(code, request, env)
 	const drops = JSON.parse(challenge.drops);
 	const now = Date.now();
 	const statements = [];
+	let refresh = false;
 
 	for (const event of submitted)
 	{
-		if (typeof event.id !== 'string' || !event.id)
+		if (!event || typeof event.id !== 'string' || !event.id || event.id.length > 120)
 		{
 			continue;
 		}
@@ -419,17 +433,18 @@ async function submitEvents(code, request, env)
 
 		// Anything outside the window is discarded rather than clamped. A kill before the start is not
 		// worth fewer points, it is worth none, and silently counting it would be the bug.
-		if (occurredAt < challenge.starts_at || occurredAt > challenge.ends_at)
+		if (occurredAt < challenge.starts_at || occurredAt > challenge.ends_at || occurredAt > now + 60000)
 		{
 			continue;
 		}
 
-		const points = pointsFor(event, challenge, drops);
+		const points = eventPoints(event, challenge, drops);
 		if (points === null)
 		{
 			continue;
 		}
 
+		refresh ||= event.kind !== 'xp' && event.kind !== 'level';
 		statements.push(env.DB.prepare(
 			`INSERT OR IGNORE INTO events
 				(id, challenge_code, rsn, kind, item_name, amount, points, occurred_at, recorded_at)
@@ -438,9 +453,9 @@ async function submitEvents(code, request, env)
 				event.id,
 				code,
 				participant.rsn,
-				event.kind === 'kc' ? 'kc' : 'drop',
+				event.kind,
 				event.kind === 'kc' ? null : String(event.itemName ?? ''),
-				Math.max(0, Math.trunc(Number(event.amount) || 0)),
+				event.amount,
 				points,
 				occurredAt,
 				now));
@@ -449,7 +464,13 @@ async function submitEvents(code, request, env)
 	if (statements.length > 0)
 	{
 		await env.DB.batch(statements);
-		await refreshTotals(code, participant.rsn, env);
+		if (refresh) await refreshTotals(code, participant.rsn, env);
+	}
+
+	if (typeOf(challenge) !== 'BOSS')
+	{
+		// The sender only needs acknowledgement. Do not read every participant for every XP batch.
+		return json({ accepted: statements.length });
 	}
 
 	return json({
@@ -749,34 +770,6 @@ async function challengesCreatedBy(rsn, env)
 }
 
 /**
- * What an event is worth, from the challenge's own configuration.
- *
- * Returns null for anything the challenge does not count — a drop that is not on the list, or a
- * partial run of kills that has not reached the threshold.
- */
-function pointsFor(event, challenge, drops)
-{
-	if (event.kind === 'kc')
-	{
-		// A kill is worth nothing on its own — it is worth something once enough of them have
-		// accumulated. Scoring each report separately would mean seven kills then eight scored zero
-		// against a threshold of ten, because each report truncates on its own. So kill events carry
-		// their count and no points, and the threshold is applied to the running total instead.
-		return 0;
-	}
-
-	const name = String(event.itemName ?? '').toLowerCase();
-	const drop = drops.find((candidate) => candidate.name.toLowerCase() === name);
-	if (!drop)
-	{
-		return null;
-	}
-
-	const quantity = Math.max(1, Math.trunc(Number(event.amount) || 1));
-	return drop.points * quantity;
-}
-
-/**
  * Rewrites every event's points against the current configuration. Called when the creator edits a
  * challenge, so that what the leaderboard says and what the rules say cannot drift apart.
  */
@@ -793,7 +786,7 @@ async function recomputePoints(code, env)
 	const statements = [];
 	for (const row of rows.results ?? [])
 	{
-		const points = pointsFor(
+		const points = eventPoints(
 			{ kind: row.kind, itemName: row.item_name, amount: row.amount }, challenge, drops);
 
 		statements.push(env.DB.prepare('UPDATE events SET points = ? WHERE id = ?')
@@ -825,7 +818,7 @@ async function recomputePoints(code, env)
 async function leaderboardFor(code, env)
 {
 	const rows = await env.DB.prepare(
-		`SELECT rsn, points, kills, drops, adjustment, manual
+		`SELECT rsn, points, kills, drops, adjustment, manual, levels, purples, raid_modes
 		   FROM participants
 		  WHERE challenge_code = ?
 		  ORDER BY points DESC, kills DESC, rsn ASC`)
@@ -833,7 +826,9 @@ async function leaderboardFor(code, env)
 		.all();
 
 	// SQLite has no booleans, and the plugin should not have to know that.
-	return (rows.results ?? []).map(row => ({ ...row, manual: row.manual === 1 }));
+	return (rows.results ?? []).map(({ raid_modes, ...row }) => ({
+		...row, manual: row.manual === 1, raidModes: JSON.parse(raid_modes ?? '{}')
+	}));
 }
 
 /**
@@ -842,57 +837,71 @@ async function leaderboardFor(code, env)
  */
 async function refreshTotals(code, rsn, env, challenge = null)
 {
-	const rules = challenge ?? await loadChallenge(code, env);
-
-	const totals = await env.DB.prepare(
-		`SELECT COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kills,
-		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN points ELSE 0 END), 0) AS dropPoints,
-		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN 1 ELSE 0 END), 0) AS drops
-		   FROM events
-		  WHERE challenge_code = ? AND rsn = ?`)
-		.bind(code, rsn)
-		.first();
-
-	// The threshold applies to everything killed so far, not to each report of it.
-	const kills = totals?.kills ?? 0;
-	const killPoints = rules.kc_per > 0
-		? Math.trunc(kills / rules.kc_per) * rules.kc_points
-		: 0;
-
-	// The creator's adjustment is added back on every rebuild rather than being overwritten by it.
-	// Without this line an edited total would last only until that player's next kill.
+	const totals = await eventTotals(code, rsn, env, challenge);
 	await env.DB.prepare(
 		`UPDATE participants
-		    SET points = ? + adjustment, kills = ?, drops = ?
+		    SET points = ? + adjustment, kills = ?, drops = ?, levels = ?, purples = ?, raid_modes = ?
 		  WHERE challenge_code = ? AND rsn = ?`)
-		.bind(killPoints + (totals?.dropPoints ?? 0), kills, totals?.drops ?? 0, code, rsn)
-		.run();
+		.bind(totals.points, totals.kills, totals.drops, totals.levels, totals.purples,
+			JSON.stringify(totals.raidModes), code, rsn).run();
 }
 
-/**
- * What a participant scores from their own kills, with nothing added by hand.
- *
- * Wanted whenever an adjustment has to be worked out: the creator types a total, and the difference
- * between that total and this is what gets stored.
- */
 async function trackedPoints(code, rsn, env, challenge = null)
 {
+	return (await eventTotals(code, rsn, env, challenge)).points;
+}
+
+async function eventTotals(code, rsn, env, challenge)
+{
 	const rules = challenge ?? await loadChallenge(code, env);
-
 	const totals = await env.DB.prepare(
-		`SELECT COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kills,
-		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN points ELSE 0 END), 0) AS dropPoints
-		   FROM events
-		  WHERE challenge_code = ? AND rsn = ?`)
-		.bind(code, rsn)
-		.first();
+		`SELECT COALESCE(SUM(CASE WHEN kind IN ('kc', 'raid') THEN amount ELSE 0 END), 0) AS kills,
+		        COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kc,
+		        COALESCE(SUM(points), 0) AS eventPoints,
+		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN 1 ELSE 0 END), 0) AS drops,
+		        COALESCE(SUM(CASE WHEN kind = 'level' THEN amount ELSE 0 END), 0) AS levels
+		   FROM events WHERE challenge_code = ? AND rsn = ?`)
+		.bind(code, rsn).first();
 
-	const kills = totals?.kills ?? 0;
-	const killPoints = rules.kc_per > 0
-		? Math.trunc(kills / rules.kc_per) * rules.kc_points
-		: 0;
+	let purples = 0;
+	const raidModes = {};
+	if (typeOf(rules) === 'RAID')
+	{
+		const names = new Set(JSON.parse(rules.drops).filter(rule => rule.purple)
+			.map(rule => rule.name.toLowerCase()));
+		const rows = await env.DB.prepare(
+			`SELECT kind, item_name, SUM(amount) AS amount FROM events
+			  WHERE challenge_code = ? AND rsn = ? AND kind IN ('raid', 'drop')
+			  GROUP BY kind, item_name`).bind(code, rsn).all();
+		for (const row of rows.results ?? [])
+		{
+			if (row.kind === 'raid') raidModes[row.item_name] = row.amount;
+			else if (names.has(row.item_name.toLowerCase())) purples += row.amount;
+		}
+	}
 
-	return killPoints + (totals?.dropPoints ?? 0);
+	const countPoints = ['CLUE', 'MINIGAME'].includes(typeOf(rules)) ? totals.kc
+		: Math.trunc(totals.kc / rules.kc_per) * rules.kc_points;
+	return { ...totals, points: countPoints + totals.eventPoints, purples, raidModes };
+}
+
+async function prizeCandidates(challenge, env)
+{
+	const rules = JSON.parse(challenge.drops).filter(rule => rule.firstPrize);
+	if (!rules.length) return [];
+	const rows = await env.DB.prepare(
+		`WITH prizes AS (
+		  SELECT item_name AS itemName, rsn, occurred_at AS occurredAt,
+		         ROW_NUMBER() OVER (
+		           PARTITION BY item_name COLLATE NOCASE
+		           ORDER BY occurred_at, recorded_at, id
+		         ) AS position
+		    FROM events WHERE challenge_code = ? AND kind = 'drop'
+		     AND item_name COLLATE NOCASE IN (SELECT value FROM json_each(?))
+		)
+		SELECT itemName, rsn, occurredAt FROM prizes WHERE position = 1 ORDER BY occurredAt`)
+		.bind(challenge.code, JSON.stringify(rules.map(rule => rule.name))).all();
+	return rows.results ?? [];
 }
 
 /**
@@ -950,7 +959,9 @@ function publicChallenge(row)
 		kcPer: row.kc_per,
 		kcPoints: row.kc_points,
 		drops: JSON.parse(row.drops),
-		creatorRsn: row.creator_rsn
+		creatorRsn: row.creator_rsn,
+		eventType: typeOf(row),
+		...optionsOf(row)
 	};
 }
 
@@ -961,17 +972,17 @@ function validateChallenge(body)
 		return 'Missing body';
 	}
 
-	if (!body.name || !String(body.name).trim())
+	if (typeof body.name !== 'string' || !body.name.trim() || body.name.length > 120)
 	{
 		return 'A name is required';
 	}
 
-	if (!body.boss || !String(body.boss).trim())
+	if (typeof body.boss !== 'string' || !body.boss.trim() || body.boss.length > 120)
 	{
-		return 'A boss is required';
+		return 'A challenge target is required';
 	}
 
-	if (!body.creatorRsn || !String(body.creatorRsn).trim())
+	if (typeof body.creatorRsn !== 'string' || !body.creatorRsn.trim())
 	{
 		return 'A creator name is required';
 	}
@@ -996,12 +1007,12 @@ function validateChallenge(body)
 		return 'Kill count points cannot be negative';
 	}
 
-	if (!Array.isArray(body.drops))
+	if (!Array.isArray(body.drops) || body.drops.length > 100)
 	{
-		return 'The drop list is required, even if empty';
+		return 'The drop list must contain at most 100 items';
 	}
 
-	return null;
+	return validateWeekly(body);
 }
 
 function normaliseDrops(drops)
@@ -1011,7 +1022,9 @@ function normaliseDrops(drops)
 		.map((drop) => ({
 			name: String(drop.name).trim(),
 			itemId: Number.isFinite(drop.itemId) ? drop.itemId : -1,
-			points: Math.max(0, Math.trunc(Number(drop.points) || 0))
+			points: Math.min(100000, Math.max(0, Math.trunc(Number(drop.points) || 0))),
+			...(drop.firstPrize === true ? { firstPrize: true } : {}),
+			...(drop.purple === true ? { purple: true } : {})
 		}));
 }
 

@@ -89,7 +89,12 @@ public class TileButton extends JPanel
 		graphics.fillRoundRect(0, 0, 4, height - 1, RADIUS, RADIUS);
 
 		graphics.setColor(Theme.GOLD);
-		graphics.setFont(Theme.tile());
+		java.awt.Font titleFont = Theme.tile();
+		while (titleFont.getSize2D() > 10 && graphics.getFontMetrics(titleFont).stringWidth(label) > width - 28)
+		{
+			titleFont = titleFont.deriveFont(titleFont.getSize2D() - 1);
+		}
+		graphics.setFont(titleFont);
 		int labelY = sublabel == null ? height / 2 + 6 : height / 2 - 1;
 		graphics.drawString(label, 16, labelY);
 

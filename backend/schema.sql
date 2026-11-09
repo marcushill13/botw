@@ -28,7 +28,9 @@ CREATE TABLE IF NOT EXISTS challenges (
 	creator_token  TEXT NOT NULL,
 	creator_rsn    TEXT NOT NULL,
 
-	created_at     INTEGER NOT NULL
+	created_at     INTEGER NOT NULL,
+	event_type     TEXT NOT NULL DEFAULT 'BOSS',
+	event_options  TEXT NOT NULL DEFAULT '{}'
 );
 
 -- The webhook URL is a secret. Never include it in a public challenge response.
@@ -75,6 +77,9 @@ CREATE TABLE IF NOT EXISTS participants (
 	--
 	-- Cleared if they ever do join properly, which happens by itself when they enter the code.
 	manual         INTEGER NOT NULL DEFAULT 0,
+	levels         INTEGER NOT NULL DEFAULT 0,
+	purples        INTEGER NOT NULL DEFAULT 0,
+	raid_modes     TEXT NOT NULL DEFAULT '{}',
 
 	PRIMARY KEY (challenge_code, rsn)
 );
@@ -87,10 +92,10 @@ CREATE TABLE IF NOT EXISTS events (
 	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
 	rsn            TEXT NOT NULL,
 
-	-- 'kc' or 'drop'.
+	-- 'kc', 'drop', 'raid', 'xp', or 'level'.
 	kind           TEXT NOT NULL,
 
-	-- Null for a kill count event.
+	-- Drop name, raid mode or skill name. Null for a count event.
 	item_name      TEXT,
 
 	-- Kills for a 'kc' event, quantity for a 'drop'.
@@ -103,6 +108,20 @@ CREATE TABLE IF NOT EXISTS events (
 	occurred_at    INTEGER NOT NULL,
 	recorded_at    INTEGER NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS events_by_prize
+	ON events (challenge_code, kind, item_name COLLATE NOCASE, occurred_at, recorded_at);
+
+-- XP arrives frequently. Apply an XP batch once when its unique event ID is inserted.
+-- A retry is ignored by the INSERT, so the trigger cannot pay the same XP twice.
+CREATE TRIGGER IF NOT EXISTS weekly_xp_totals AFTER INSERT ON events
+WHEN NEW.kind IN ('xp', 'level')
+BEGIN
+	UPDATE participants SET
+		points = points + CASE WHEN NEW.kind = 'xp' THEN NEW.points ELSE 0 END,
+		levels = levels + CASE WHEN NEW.kind = 'level' THEN NEW.amount ELSE 0 END
+	WHERE challenge_code = NEW.challenge_code AND rsn = NEW.rsn;
+END;
 
 CREATE INDEX IF NOT EXISTS events_by_challenge ON events (challenge_code, rsn);
 CREATE INDEX IF NOT EXISTS challenges_by_creator ON challenges (creator_rsn);

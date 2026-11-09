@@ -2,6 +2,8 @@ package com.botw.ui;
 
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
+import com.botw.data.ChallengeType;
+import com.botw.data.WeeklyTargets;
 import com.botw.data.DropRule;
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -19,6 +21,7 @@ import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -51,6 +54,11 @@ public class CreatePanel extends JPanel
 	};
 
 	private final BossDrops bossDrops;
+	private final ChallengeType type;
+	private final JComboBox<String> weeklyPicker;
+	private final JCheckBox raidByPoints = new JCheckBox("Rank by points");
+	private final Map<String, JSpinner> raidPoints = new LinkedHashMap<>();
+	private final JPanel modeList = new JPanel();
 	private final ItemManager itemManager;
 
 	private final JTextField name = new JTextField();
@@ -81,7 +89,7 @@ public class CreatePanel extends JPanel
 	public CreatePanel(
 		BossDrops bossDrops, ItemManager itemManager, Consumer<Challenge> onCreate, Runnable onCancel)
 	{
-		this(bossDrops, itemManager, onCreate, onCancel, null);
+		this(bossDrops, itemManager, onCreate, onCancel, ChallengeType.BOSS, null);
 	}
 
 	/**
@@ -91,8 +99,11 @@ public class CreatePanel extends JPanel
 	 */
 	public CreatePanel(
 		BossDrops bossDrops, ItemManager itemManager, Consumer<Challenge> onCreate, Runnable onCancel,
-		Challenge editing)
+		ChallengeType type, Challenge editing)
 	{
+		this.type = type;
+		this.weeklyPicker = Cards.comboBox(weeklyTargets(type));
+		this.editing = editing;
 		this.bossDrops = bossDrops;
 		this.itemManager = itemManager;
 		this.onCreate = onCreate;
@@ -106,8 +117,8 @@ public class CreatePanel extends JPanel
 		form.setBackground(Theme.BACKGROUND);
 		form.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
-		JLabel heading = new JLabel(editing == null ? "NEW CHALLENGE" : "EDIT CHALLENGE");
-		heading.setFont(Theme.figure(18f));
+		JLabel heading = new JLabel(editing == null ? "NEW " + type.name() + " CHALLENGE" : "EDIT CHALLENGE");
+		heading.setFont(Theme.figure(16f));
 		heading.setForeground(Theme.GOLD);
 		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
 		form.add(heading);
@@ -125,24 +136,53 @@ public class CreatePanel extends JPanel
 		form.add(Cards.field("Timezone", timezone));
 		form.add(Cards.gap(8));
 
-		form.add(Cards.field("Find a boss", field(bossSearch)));
-		form.add(Cards.gap(4));
-		form.add(bossPicker);
-		form.add(Cards.gap(6));
-
-		// Without this the search box still reads as a half-finished search once a boss is picked, and
-		// nothing on the screen says which one the challenge is actually about.
-		chosenBoss.setLayout(new BoxLayout(chosenBoss, BoxLayout.Y_AXIS));
-		chosenBoss.setBackground(Theme.BACKGROUND);
-		chosenBoss.setAlignmentX(Component.LEFT_ALIGNMENT);
-		form.add(chosenBoss);
+		if (type == ChallengeType.BOSS)
+		{
+			form.add(Cards.field("Find a boss", field(bossSearch)));
+			form.add(Cards.gap(4));
+			form.add(bossPicker);
+			form.add(Cards.gap(6));
+			chosenBoss.setLayout(new BoxLayout(chosenBoss, BoxLayout.Y_AXIS));
+			chosenBoss.setBackground(Theme.BACKGROUND);
+			chosenBoss.setAlignmentX(Component.LEFT_ALIGNMENT);
+			form.add(chosenBoss);
+			form.add(Cards.gap(8));
+			form.add(Cards.sectionLabel("Kill count"));
+			form.add(everyKillsRow());
+		}
+		else
+		{
+			if (editing != null) weeklyPicker.setSelectedItem(editing.getBoss());
+			weeklyPicker.setEnabled(editing == null);
+			form.add(Cards.field(type == ChallengeType.CLUE ? "Clue tier" : type.name().toLowerCase(java.util.Locale.ROOT), weeklyPicker));
+			if (type == ChallengeType.RAID)
+			{
+				raidByPoints.setSelected(editing != null && editing.isRaidByPoints());
+				raidByPoints.setBackground(Theme.BACKGROUND);
+				raidByPoints.setForeground(Theme.TEXT);
+				raidByPoints.setFont(Theme.body());
+				raidByPoints.setAlignmentX(Component.LEFT_ALIGNMENT);
+				form.add(raidByPoints);
+				form.add(Cards.muted("Unticked: most clears. Ticked: award points per clear and drop."));
+				modeList.setLayout(new BoxLayout(modeList, BoxLayout.Y_AXIS));
+				modeList.setBackground(Theme.BACKGROUND);
+				modeList.setAlignmentX(Component.LEFT_ALIGNMENT);
+				form.add(modeList);
+			}
+			else
+			{
+				form.add(Cards.muted(type == ChallengeType.SKILL ? "Ranked by XP gained. Levels are tracked separately."
+					: type == ChallengeType.CLUE ? "One count per casket opened during the event."
+					: "Ranked by rifts closed. Reward searches do not count as closes."));
+			}
+		}
 		form.add(Cards.gap(8));
 
-		form.add(Cards.sectionLabel("Kill count"));
-		form.add(everyKillsRow());
-		form.add(Cards.gap(8));
-
-		form.add(Cards.sectionLabel("Drops"));
+		form.add(Cards.sectionLabel(type == ChallengeType.BOSS ? "Drops" : "Drops and first prizes"));
+		if (type != ChallengeType.BOSS)
+		{
+			form.add(Cards.muted("Tick First to track a prize candidate. Review the evidence before awarding it."));
+		}
 		dropList.setLayout(new BoxLayout(dropList, BoxLayout.Y_AXIS));
 		dropList.setBackground(Theme.BACKGROUND);
 		dropList.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -168,11 +208,24 @@ public class CreatePanel extends JPanel
 			showChosenBoss();
 		});
 
-		refillBossPicker();
+		if (type == ChallengeType.BOSS)
+		{
+			refillBossPicker();
+		}
+		else
+		{
+			weeklyPicker.addActionListener(event -> fillWeeklyDefaults());
+			raidByPoints.addActionListener(event ->
+			{
+				modeList.setVisible(raidByPoints.isSelected());
+				rebuildDropList();
+			});
+			fillWeeklyDefaults();
+		}
 
 		if (editing == null)
 		{
-			showChosenBoss();
+			if (type == ChallengeType.BOSS) showChosenBoss();
 			prefillTimes();
 		}
 		else
@@ -198,19 +251,88 @@ public class CreatePanel extends JPanel
 		kcPer.setValue(Math.max(1, challenge.getKcPer()));
 		kcPoints.setValue(Math.max(0, challenge.getKcPoints()));
 
-		bossSearch.setText(challenge.getBoss());
-		refillBossPicker();
+		if (type == ChallengeType.BOSS)
+		{
+			bossSearch.setText(challenge.getBoss());
+			refillBossPicker();
+		}
 
 		// Selecting the boss would refill the drops from the wiki list and undo the creator's edits, so
 		// the stored list is put back afterwards.
 		drops.clear();
 		for (DropRule rule : challenge.getDrops())
 		{
-			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints()));
+			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints(), rule.isFirstPrize(), rule.isPurple()));
 		}
 
-		showChosenBoss();
+		if (type == ChallengeType.BOSS) showChosenBoss();
 		rebuildDropList();
+	}
+
+	private static String[] weeklyTargets(ChallengeType type)
+	{
+		switch (type)
+		{
+			case RAID: return WeeklyTargets.RAIDS;
+			case SKILL: return WeeklyTargets.skills();
+			case CLUE: return WeeklyTargets.CLUES;
+			case MINIGAME: return new String[] { WeeklyTargets.RIFT };
+			default: return new String[0];
+		}
+	}
+
+	private void fillWeeklyDefaults()
+	{
+		String target = (String) weeklyPicker.getSelectedItem();
+		if (target == null) return;
+		drops.clear();
+		raidPoints.clear();
+		modeList.removeAll();
+		if (type == ChallengeType.RAID)
+		{
+			for (String mode : WeeklyTargets.modes(target))
+			{
+				int weight = editing == null ? 1 : editing.getRaidPoints().getOrDefault(mode, 1);
+				JSpinner input = new JSpinner(new SpinnerNumberModel(weight, 0, 10000, 1));
+				raidPoints.put(mode, input);
+				modeList.add(Cards.field(mode + " clear points", spinner(input)));
+			}
+			modeList.setVisible(raidByPoints.isSelected());
+			for (String drop : WeeklyTargets.purpleDrops(target))
+			{
+				weeklyDrop(drop, true, true);
+			}
+			weeklyDrop(WeeklyTargets.raidPet(target), true, false);
+			if (WeeklyTargets.ARCHIVE.equals(target)) weeklyDrop("Horn of Bran", true, false);
+		}
+		else if (type == ChallengeType.SKILL && "Slayer".equals(target))
+		{
+			for (String drop : new String[] { "Aranea boots", "Horn of plenty", "Basilisk jaw", "Pet kraken", "Imbued heart" })
+			{
+				weeklyDrop(drop, true, false);
+			}
+		}
+		else if (type == ChallengeType.CLUE && "Medium".equals(target))
+		{
+			weeklyDrop("Ranger boots", true, false);
+		}
+		else if (type == ChallengeType.MINIGAME)
+		{
+			for (String drop : new String[] { "Abyssal needle", "Abyssal lantern", "Abyssal protector" })
+			{
+				weeklyDrop(drop, true, false);
+			}
+		}
+		rebuildDropList();
+		modeList.revalidate();
+		modeList.repaint();
+	}
+
+	private void weeklyDrop(String name, boolean first, boolean purple)
+	{
+		int id = itemManager.search(name).stream().filter(item -> item.getName().equalsIgnoreCase(name))
+			.mapToInt(ItemPrice::getId).findFirst().orElse(-1);
+		drops.put(name, new DropRule(name, id, 0, first, purple));
 	}
 
 	private static String written(long epochMillis, String timezone)
@@ -349,7 +471,7 @@ public class CreatePanel extends JPanel
 
 		if (drops.isEmpty())
 		{
-			dropList.add(Cards.muted("No drops on this challenge yet. Pick a boss, or add items below."));
+			dropList.add(Cards.muted("No drops selected. Add an item below if you want to track it."));
 		}
 
 		for (DropRule rule : new ArrayList<>(drops.values()))
@@ -391,7 +513,10 @@ public class CreatePanel extends JPanel
 		points.setPreferredSize(new Dimension(46, 20));
 		points.setMaximumSize(new Dimension(46, 20));
 		points.addChangeListener(event -> rule.setPoints((Integer) points.getValue()));
-		right.add(points);
+		if (type == ChallengeType.BOSS || (type == ChallengeType.RAID && raidByPoints.isSelected()))
+		{
+			right.add(points);
+		}
 
 		JButton remove = Cards.button("X");
 		remove.setToolTipText("Do not count " + rule.getName());
@@ -403,8 +528,29 @@ public class CreatePanel extends JPanel
 		right.add(remove);
 
 		row.add(right, BorderLayout.EAST);
+		if (type != ChallengeType.BOSS)
+		{
+			JPanel tags = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 0));
+			tags.setBackground(row.getBackground());
+			tags.add(dropTag("First", rule.isFirstPrize(), rule::setFirstPrize));
+			if (type == ChallengeType.RAID)
+			{
+				tags.add(dropTag("Purple", rule.isPurple(), rule::setPurple));
+			}
+			row.add(tags, BorderLayout.SOUTH);
+		}
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 		return row;
+	}
+
+	private JCheckBox dropTag(String label, boolean selected, Consumer<Boolean> change)
+	{
+		JCheckBox box = new JCheckBox(label, selected);
+		box.setOpaque(false);
+		box.setForeground(Theme.TEXT);
+		box.setFont(Theme.body());
+		box.addActionListener(event -> change.accept(box.isSelected()));
+		return box;
 	}
 
 	/**
@@ -480,7 +626,7 @@ public class CreatePanel extends JPanel
 			@Override
 			public void mouseClicked(java.awt.event.MouseEvent event)
 			{
-				drops.put(item.getName(), new DropRule(item.getName(), item.getId(), 0));
+				drops.put(item.getName(), new DropRule(item.getName(), item.getId(), 0, type != ChallengeType.BOSS, false));
 				itemSearch.setText("");
 				refillItemResults();
 				rebuildDropList();
@@ -509,7 +655,10 @@ public class CreatePanel extends JPanel
 		challenge.setName(name.getText().trim());
 
 		BossDrops.Boss boss = (BossDrops.Boss) bossPicker.getSelectedItem();
-		challenge.setBoss(boss == null ? "" : boss.getName());
+		challenge.setBoss(type == ChallengeType.BOSS ? boss == null ? "" : boss.getName()
+			: (String) weeklyPicker.getSelectedItem());
+		challenge.setEventType(type);
+		challenge.setRaidByPoints(raidByPoints.isSelected());
 
 		String zone = String.valueOf(timezone.getSelectedItem());
 		challenge.setTimezone(zone);
@@ -519,7 +668,7 @@ public class CreatePanel extends JPanel
 
 		if (challenge.getName().isEmpty() || challenge.getBoss().isEmpty() || start == null || end == null)
 		{
-			Cards.warn(this, "A name, a boss and both times are needed. Times look like 2026-08-17 10:00.");
+			Cards.warn(this, "Enter a name, select an activity and fill in both times. Times look like 2026-08-17 10:00.");
 			return;
 		}
 
@@ -533,6 +682,19 @@ public class CreatePanel extends JPanel
 		challenge.setEndsAt(end);
 		challenge.setKcPer((Integer) kcPer.getValue());
 		challenge.setKcPoints((Integer) kcPoints.getValue());
+		for (Map.Entry<String, JSpinner> entry : raidPoints.entrySet())
+		{
+			try
+			{
+				entry.getValue().commitEdit();
+			}
+			catch (java.text.ParseException ex)
+			{
+				Cards.warn(this, "Enter valid points for " + entry.getKey() + " clears.");
+				return;
+			}
+			challenge.getRaidPoints().put(entry.getKey(), (Integer) entry.getValue().getValue());
+		}
 		challenge.setDrops(new ArrayList<>(drops.values()));
 
 		// Carried through so the caller knows which challenge it is saving.

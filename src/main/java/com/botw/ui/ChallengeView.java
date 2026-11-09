@@ -1,6 +1,9 @@
 package com.botw.ui;
 
 import com.botw.data.Challenge;
+import com.botw.data.ChallengeType;
+import com.botw.data.PrizeCandidate;
+import com.botw.data.WeeklyTargets;
 import com.botw.data.DropRule;
 import com.botw.data.LeaderboardEntry;
 import java.awt.BorderLayout;
@@ -8,7 +11,9 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Font;
+import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +21,7 @@ import java.util.function.IntConsumer;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -62,6 +68,8 @@ public class ChallengeView extends JPanel
 
 	/** Held so the leaderboard alone can be redrawn when edit mode is switched on and off. */
 	private final JPanel leaderboardHolder = new JPanel();
+	private final JPanel prizeHolder = new JPanel();
+	private String ranking = "Overall";
 
 	/** Held for the same reason: both move when points land, and nothing else on the screen does. */
 	private final JPanel yourPointsHolder = new JPanel();
@@ -145,6 +153,10 @@ public class ChallengeView extends JPanel
 		body.add(Cards.title(challenge.getName()));
 		body.add(Cards.gap(2));
 		body.add(Cards.body(challenge.getBoss()));
+		if (challenge.getEventType() != ChallengeType.BOSS)
+		{
+			body.add(Cards.muted(challenge.getEventType().title()));
+		}
 		body.add(Cards.gap(6));
 
 		// The countdown is the thing everyone opens this for, so it goes at the top and it is loud.
@@ -214,11 +226,42 @@ public class ChallengeView extends JPanel
 		}
 
 		body.add(Cards.gap(10));
-		body.add(Cards.sectionLabel("Points"));
+		body.add(Cards.sectionLabel("Scoring"));
 		body.add(pointsList(challenge));
 
 		body.add(Cards.gap(10));
-		body.add(Cards.sectionLabel("Leaderboard"));
+		body.add(Cards.sectionLabel("Leaderboard · " + challenge.scoreUnit()));
+		if (challenge.getEventType() == ChallengeType.SKILL || challenge.getEventType() == ChallengeType.RAID)
+		{
+			List<String> choices = new ArrayList<>();
+			choices.add("Overall");
+			if (challenge.getEventType() == ChallengeType.SKILL)
+			{
+				choices.add("Levels gained");
+			}
+			else
+			{
+				choices.add("Clears");
+				choices.add("Purples");
+				if (WeeklyTargets.modes(challenge.getBoss()).size() > 1)
+				{
+					for (String mode : WeeklyTargets.modes(challenge.getBoss())) choices.add(mode + " clears");
+				}
+			}
+			JComboBox<String> order = Cards.comboBox(choices.toArray(new String[0]));
+			order.addActionListener(event ->
+			{
+				if (editing)
+				{
+					order.setSelectedItem(ranking);
+					return;
+				}
+				ranking = String.valueOf(order.getSelectedItem());
+				renderLeaderboard();
+			});
+			body.add(order);
+			body.add(Cards.gap(4));
+		}
 
 		leaderboardHolder.setLayout(new BoxLayout(leaderboardHolder, BoxLayout.Y_AXIS));
 		leaderboardHolder.setBackground(Theme.BACKGROUND);
@@ -226,8 +269,14 @@ public class ChallengeView extends JPanel
 		renderLeaderboard();
 		body.add(leaderboardHolder);
 
+		prizeHolder.setLayout(new BoxLayout(prizeHolder, BoxLayout.Y_AXIS));
+		prizeHolder.setBackground(Theme.BACKGROUND);
+		prizeHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
+		renderPrizes();
+		body.add(prizeHolder);
+
 		body.add(Cards.gap(10));
-		body.add(Cards.sectionLabel("Your points"));
+		body.add(Cards.sectionLabel("Your " + challenge.scoreUnit()));
 
 		yourPointsHolder.setLayout(new BoxLayout(yourPointsHolder, BoxLayout.Y_AXIS));
 		yourPointsHolder.setBackground(Theme.BACKGROUND);
@@ -415,20 +464,44 @@ public class ChallengeView extends JPanel
 		list.setBackground(Theme.BACKGROUND);
 		list.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		list.add(row(null, "Every " + challenge.getKcPer() + " kills",
-			challenge.getKcPoints() + " pts", Theme.TEXT));
+		switch (challenge.getEventType())
+		{
+			case BOSS:
+				list.add(row(null, "Every " + challenge.getKcPer() + " kills",
+					challenge.getKcPoints() + " pts", Theme.TEXT));
+				break;
+			case RAID:
+				if (challenge.isRaidByPoints())
+				{
+					for (String mode : WeeklyTargets.modes(challenge.getBoss()))
+					{
+						list.add(row(null, mode + " clear",
+							challenge.getRaidPoints().getOrDefault(mode, 1) + " pts", Theme.TEXT));
+					}
+				}
+				else list.add(Cards.muted("Most raid clears wins."));
+				break;
+			case SKILL:
+				list.add(Cards.muted("Most XP gained wins. Level gains have their own ranking."));
+				break;
+			case CLUE:
+				list.add(Cards.muted("Most " + challenge.getBoss().toLowerCase(java.util.Locale.ROOT)
+					+ " clue caskets opened wins."));
+				break;
+			case MINIGAME:
+				list.add(Cards.muted("Most rifts closed wins."));
+				break;
+		}
 
 		for (DropRule drop : challenge.getDrops())
 		{
+			boolean scores = (challenge.getEventType() == ChallengeType.BOSS
+				|| (challenge.getEventType() == ChallengeType.RAID && challenge.isRaidByPoints()))
+				&& drop.getPoints() > 0;
+			if (!scores && !drop.isFirstPrize() && !drop.isPurple()) continue;
 			list.add(Cards.gap(2));
-			list.add(row(drop.getItemId(), drop.getName(),
-				drop.getPoints() + " pts", Theme.TEXT));
-		}
-
-		if (challenge.getDrops().isEmpty())
-		{
-			list.add(Cards.gap(2));
-			list.add(Cards.muted("No drops on this one — kill count only."));
+			String value = scores ? drop.getPoints() + " pts" : drop.isFirstPrize() ? "First" : "Purple";
+			list.add(row(drop.getItemId(), drop.getName(), value, Theme.TEXT));
 		}
 
 		return list;
@@ -450,7 +523,7 @@ public class ChallengeView extends JPanel
 	 * Only the two parts that can have changed are redrawn, rather than the whole screen, so this does
 	 * not throw away where you had scrolled to or shut the evidence folder you were reading.
 	 */
-	public void update(List<LeaderboardEntry> fresh)
+	public void update(List<LeaderboardEntry> fresh, Challenge latest)
 	{
 		// Never mid-edit. The creator has half-typed numbers in those boxes, and replacing the rows
 		// under them would lose what they had entered.
@@ -460,8 +533,10 @@ public class ChallengeView extends JPanel
 		}
 
 		entries = fresh;
+		if (latest != null) challenge.setPrizeCandidates(latest.getPrizeCandidates());
 		renderLeaderboard();
 		renderYourPoints();
+		renderPrizes();
 	}
 
 	/** Whether the creator is part way through changing scores, in which case leave the screen alone. */
@@ -495,8 +570,23 @@ public class ChallengeView extends JPanel
 			leaderboardHolder.add(Cards.muted("Nobody has scored yet."));
 		}
 
+		if (challenge.getEventType() != ChallengeType.BOSS && !entries.isEmpty())
+		{
+			long total = entries.stream().mapToLong(LeaderboardEntry::getPoints).sum();
+			long scored = entries.stream().filter(entry -> entry.getPoints() > 0 || entry.getKills() > 0).count();
+			leaderboardHolder.add(Cards.muted(format(total) + " " + challenge.scoreUnit()
+				+ " · " + scored + " players scored"));
+			leaderboardHolder.add(Cards.gap(4));
+		}
+
+		List<LeaderboardEntry> ranked = new ArrayList<>(entries);
+		if (!editing && !"Overall".equals(ranking))
+		{
+			ranked.sort(Comparator.comparingInt(this::rankValue).reversed()
+				.thenComparing(LeaderboardEntry::getRsn, String.CASE_INSENSITIVE_ORDER));
+		}
 		int place = 1;
-		for (LeaderboardEntry entry : entries)
+		for (LeaderboardEntry entry : ranked)
 		{
 			leaderboardHolder.add(row(entry, place++));
 			leaderboardHolder.add(Cards.gap(2));
@@ -510,6 +600,63 @@ public class ChallengeView extends JPanel
 
 		leaderboardHolder.revalidate();
 		leaderboardHolder.repaint();
+	}
+
+	private void renderPrizes()
+	{
+		prizeHolder.removeAll();
+		if (challenge.getDrops().stream().anyMatch(DropRule::isFirstPrize))
+		{
+			prizeHolder.add(Cards.gap(10));
+			prizeHolder.add(Cards.sectionLabel("First prize candidates"));
+			prizeHolder.add(Cards.muted("Earliest recorded drops. Confirm screenshots and claims before awarding."));
+			for (DropRule rule : challenge.getDrops())
+			{
+				if (!rule.isFirstPrize()) continue;
+				String holder = "Unclaimed";
+				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
+				{
+					if (rule.getName().equalsIgnoreCase(candidate.getItemName()))
+					{
+						holder = candidate.getRsn();
+						break;
+					}
+				}
+				prizeHolder.add(Cards.muted(rule.getName() + ": " + holder));
+			}
+		}
+		prizeHolder.revalidate();
+		prizeHolder.repaint();
+	}
+
+	private int rankValue(LeaderboardEntry entry)
+	{
+		if (editing) return entry.getPoints();
+		switch (ranking)
+		{
+			case "Overall": return entry.getPoints();
+			case "Levels gained": return entry.getLevels();
+			case "Clears": return entry.getKills();
+			case "Purples": return entry.getPurples();
+			default: return entry.getRaidModes().getOrDefault(ranking.replace(" clears", ""), 0);
+		}
+	}
+
+	private static String format(long value)
+	{
+		return NumberFormat.getIntegerInstance(java.util.Locale.ROOT).format(value);
+	}
+
+	private String activitySummary(LeaderboardEntry entry)
+	{
+		switch (challenge.getEventType())
+		{
+			case SKILL: return format(entry.getLevels()) + " levels gained";
+			case RAID: return format(entry.getKills()) + " clears, " + format(entry.getPurples()) + " purples";
+			case CLUE: return format(entry.getKills()) + " caskets opened";
+			case MINIGAME: return format(entry.getKills()) + " rifts closed";
+			default: return entry.getKills() + " kills, " + entry.getDrops() + " drops";
+		}
 	}
 
 	private JPanel row(LeaderboardEntry entry, int place)
@@ -550,7 +697,7 @@ public class ChallengeView extends JPanel
 		}
 		else
 		{
-			text.add(Cards.mutedInRow(entry.getKills() + " kills, " + entry.getDrops() + " drops"));
+			text.add(Cards.mutedInRow(activitySummary(entry)));
 		}
 
 		row.add(text, BorderLayout.CENTER);
@@ -562,7 +709,7 @@ public class ChallengeView extends JPanel
 
 	private JLabel pointsLabel(LeaderboardEntry entry)
 	{
-		JLabel points = new JLabel(String.valueOf(entry.getPoints()));
+		JLabel points = new JLabel(format(rankValue(entry)));
 		points.setFont(FontManager.getRunescapeBoldFont());
 		points.setForeground(Theme.GOLD);
 		return points;
@@ -612,7 +759,7 @@ public class ChallengeView extends JPanel
 		add.addActionListener(event -> promptForPlayer());
 		row.add(add, BorderLayout.CENTER);
 
-		JButton edit = Cards.button(editing ? "Cancel" : "Edit points");
+		JButton edit = Cards.button(editing ? "Cancel" : "Edit scores");
 		edit.addActionListener(event ->
 		{
 			editing = !editing;
@@ -769,11 +916,23 @@ public class ChallengeView extends JPanel
 		}
 
 		int points = you == null ? 0 : you.getPoints();
-		JLabel total = new JLabel(points + (points == 1 ? " point" : " points"));
+		JLabel total = new JLabel(format(points) + " " + challenge.scoreUnit());
 		total.setFont(FontManager.getRunescapeBoldFont().deriveFont(Font.BOLD, 16f));
 		total.setForeground(Theme.GOLD);
 		total.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(total);
+
+		if (challenge.getEventType() != ChallengeType.BOSS)
+		{
+			card.add(Cards.gap(2));
+			card.add(Cards.muted(you == null ? "Nothing counted yet." : activitySummary(you)));
+			if (you != null && you.getAdjustment() != 0)
+			{
+				card.add(Cards.muted("Creator adjustment: " + format(you.getAdjustment())));
+			}
+			card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+			return card;
+		}
 
 		// Somebody the creator entered by hand has no kills and no drops but does have points, and
 		// telling them to go and kill something under a score of ten would read as a broken screen.

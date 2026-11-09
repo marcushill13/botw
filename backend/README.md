@@ -86,3 +86,29 @@ without the admin work.
 things: a resend after a disconnect is harmless rather than double-counted, the panel can show where
 each point came from, and every score can be recomputed when someone edits a points value mid-week —
 which will happen, because someone always sets a number wrong.
+
+
+## Test the weekly event branch
+
+Use the separate `botw-discord-test` Worker and database. The existing test database should already
+have migration 003 from the Discord rank limit update. From `backend` in PowerShell:
+
+```powershell
+npx wrangler d1 execute botw-discord-test --remote --config .\wrangler.test.toml --file=./migrations/004-weekly-challenges.sql
+npx wrangler deploy --config .\wrangler.test.toml
+```
+
+Apply 004 once to a database that already exists. For a brand new test database, use
+`schema.sql` instead. Only proceed to deploy when the migration succeeds. The test configuration
+should name the test Worker and database and have one `* * * * *` cron.
+
+Run the branch with `.\gradlew.bat run` from the repository root and set **Server address** to
+the test Worker. Create and join challenges with a start time already passed and an end time in
+the future. Try a small XP gain, an opened casket of the selected tier, and a clear in each raid mode
+you plan to use. Skill XP is batched for up to a minute; Refresh reads the current scores. For
+Guardians of the Rift, check that completing a round counts and searching the guardian does not
+add another completion. Confirm a first prize drop doesn't increase XP or clue scores. Use a private
+Discord webhook to check the correct event title and score column.
+
+The backend tests require Node 22.13 or later for the SQLite integration tests:
+`node --test backend/test/*.test.mjs`.

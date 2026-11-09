@@ -18,6 +18,32 @@ remember.
 
 Joining is that code and a button.
 
+## Weekly events
+
+Create an event from its tile on the main screen. All event types share the same join codes,
+dates, creator controls, evidence and Discord leaderboard controls.
+
+| Event | Main leaderboard | Extra rankings and prizes |
+| --- | --- | --- |
+| Boss | Configured kill and drop points | Existing boss rules |
+| Raid | Most clears or editable points per mode and per drop | Clears, clears by difficulty, purples, and first drop candidates |
+| Skill | XP gained in one selected skill | Levels gained and optional first drop candidates |
+| Clue | Opened caskets of one selected tier | Optional first drop candidates; Medium starts with Ranger boots |
+| Minigame | Guardians of the Rift rifts closed | First Abyssal needle, lantern and protector candidates |
+
+Raid presets cover Chambers of Xeric, Theatre of Blood, Tombs of Amascut and The Fractured Archive.
+Points mode starts at one point per clear and zero per item. Set the actual values for your clan
+when creating the event. First prize candidates are separate from rankings unless you explicitly
+assign a drop points in raid Points mode. Clan staff still decide which claim qualifies, including
+first solo or team clears, and award prizes themselves.
+
+Participants join the challenge on the character they play and keep RuneLite open with BOTW
+enabled. Enable RuneLite's Loot Tracker for chest drops and caskets. XP is counted as the plugin
+sees it in game, not imported from Wise Old Man, so mobile or offline progress needs a creator
+adjustment. The client cannot verify a clan's no-stacking or first-screenshot rules. Loot or a
+named collection log notification can identify a pet; keep screenshots for pets the plugin cannot
+identify by name.
+
 ## Discord hiscores
 
 The creator can add a webhook for a Discord channel in the BOTW plugin settings, open a challenge,

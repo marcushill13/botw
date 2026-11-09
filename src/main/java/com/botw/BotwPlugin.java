@@ -7,6 +7,7 @@ import com.botw.track.ChallengeStore;
 import com.botw.track.EventSender;
 import com.botw.track.KillTracker;
 import com.botw.track.Outbox;
+import com.botw.track.WeeklyTracker;
 import com.google.inject.Provides;
 import java.awt.Color;
 import java.awt.Font;
@@ -30,7 +31,7 @@ import net.runelite.client.ui.NavigationButton;
 @Slf4j
 @PluginDescriptor(
 	name = "Boss of the Week",
-	description = "Run and track clan Boss of the Week challenges",
+	description = "Track clan boss, raid, skill and clue challenges",
 	tags = {"boss", "clan", "event", "competition", "leaderboard", "drops", "kc"}
 )
 public class BotwPlugin extends Plugin
@@ -49,6 +50,9 @@ public class BotwPlugin extends Plugin
 
 	@Inject
 	private KillTracker killTracker;
+
+	@Inject
+	private WeeklyTracker weeklyTracker;
 
 	@Inject
 	private EventSender sender;
@@ -85,6 +89,7 @@ public class BotwPlugin extends Plugin
 		// The tracker is registered by hand rather than being a plugin of its own, so that it stops
 		// listening the moment this plugin is switched off.
 		eventBus.register(killTracker);
+		eventBus.register(weeklyTracker);
 
 		challenges.load();
 		outbox.load();
@@ -128,8 +133,10 @@ public class BotwPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		weeklyTracker.reset();
 		sender.stop();
 		eventBus.unregister(killTracker);
+		eventBus.unregister(weeklyTracker);
 		clientToolbar.removeNavigation(navigationButton);
 	}
 
@@ -154,7 +161,13 @@ public class BotwPlugin extends Plugin
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
-		if (event.getGameState() != GameState.LOGGED_IN)
+		GameState state = event.getGameState();
+		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING
+			|| state == GameState.CONNECTION_LOST || state == GameState.LOGGING_IN)
+		{
+			weeklyTracker.reset();
+		}
+		if (state != GameState.LOGGED_IN)
 		{
 			return;
 		}

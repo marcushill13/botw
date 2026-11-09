@@ -1,3 +1,5 @@
+import { presentation } from './weekly.js';
+
 /** A small dependency-free PNG renderer for a parchment-style Discord board.
  *  Discord cannot style an embed's background or font, so the artwork is attached to the
  *  same webhook message and replaced when the board changes. No image hosting is needed.
@@ -225,7 +227,8 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 		rect(pixels, height, 20, y + 20, WIDTH - 40, 3, 4);
 	}
 
-	const title = 'BOSS OF THE WEEK';
+	const display = presentation(challenge);
+	const title = display.title;
 	write(pixels, height, title, (WIDTH - textWidth(title, 3)) / 2, 58, 9, 3);
 	const subtitle = `${String(challenge.boss ?? 'BOSS').slice(0, 20)} HISCORES`;
 	write(pixels, height, subtitle, (WIDTH - textWidth(subtitle, 2)) / 2, 89, 10);
@@ -234,7 +237,7 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 	rect(pixels, height, 42, 146, WIDTH - 84, 2, 4);
 	write(pixels, height, 'RANK', 47, 159);
 	write(pixels, height, 'NAME', 117, 159);
-	write(pixels, height, 'POINTS', 308, 159);
+	write(pixels, height, display.score, 380 - textWidth(display.score, 2), 159);
 	rect(pixels, height, 42, 178, WIDTH - 84, 1, 4);
 
 	if (!rows.length)

@@ -3,6 +3,7 @@ package com.botw.ui;
 import com.botw.BotwConfig;
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
+import com.botw.data.ChallengeType;
 import com.botw.data.LeaderboardEntry;
 import com.botw.net.BotwApi;
 import com.botw.track.ChallengeStore;
@@ -160,7 +161,7 @@ public class BotwPanel extends PluginPanel
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			if (content.getComponentCount() == 0)
+			if (!isShowing() || content.getComponentCount() == 0)
 			{
 				return;
 			}
@@ -201,7 +202,7 @@ public class BotwPanel extends PluginPanel
 					// Still the same screen? A minute is long enough to have gone somewhere else.
 					if (content.getComponentCount() > 0 && content.getComponent(0) == view)
 					{
-						view.update(result.getValue().getLeaderboard());
+						view.update(result.getValue().getLeaderboard(), result.getValue().getChallenge());
 					}
 				});
 			});
@@ -313,7 +314,15 @@ public class BotwPanel extends PluginPanel
 
 		list.add(Cards.gap(12));
 
-		list.add(new TileButton("Create a challenge", "Pick a boss and set the points", this::showCreate));
+		list.add(new TileButton("Create a Boss Challenge", "Pick a boss and set the points", this::showCreate));
+		list.add(Cards.gap(8));
+		list.add(new TileButton("Create a Raid Challenge", "Most clears or raid points", () -> showCreate(ChallengeType.RAID)));
+		list.add(Cards.gap(8));
+		list.add(new TileButton("Create a Skill Challenge", "Rank by XP gained", () -> showCreate(ChallengeType.SKILL)));
+		list.add(Cards.gap(8));
+		list.add(new TileButton("Create a Clue Challenge", "Count caskets by tier", () -> showCreate(ChallengeType.CLUE)));
+		list.add(Cards.gap(8));
+		list.add(new TileButton("Create a Minigame Challenge", "Guardians of the Rift", () -> showCreate(ChallengeType.MINIGAME)));
 		list.add(Cards.gap(8));
 		list.add(new TileButton("Join a challenge", "Enter a code from your clan", this::showJoin));
 
@@ -442,6 +451,7 @@ public class BotwPanel extends PluginPanel
 		name.setAlignmentX(Component.LEFT_ALIGNMENT);
 		text.add(name);
 
+		text.add(Cards.mutedInRow(challenge.getEventType().title()));
 		text.add(Cards.mutedInRow(challenge.getBoss()));
 		text.add(Cards.mutedInRow(Countdown.describe(challenge, System.currentTimeMillis())));
 
@@ -479,13 +489,18 @@ public class BotwPanel extends PluginPanel
 
 	private void showCreate()
 	{
-		show(new CreatePanel(bossDrops, itemManager, this::create, this::showList));
+		showCreate(ChallengeType.BOSS);
+	}
+
+	private void showCreate(ChallengeType type)
+	{
+		show(new CreatePanel(bossDrops, itemManager, this::create, this::showList, type, null));
 	}
 
 	private void showEdit(Challenge challenge)
 	{
 		show(new CreatePanel(bossDrops, itemManager, this::saveEdit,
-			() -> openChallenge(challenge.getCode()), challenge));
+			() -> openChallenge(challenge.getCode()), challenge.getEventType(), challenge));
 	}
 
 	private void saveEdit(Challenge challenge)

@@ -1,5 +1,6 @@
 /** The Discord message is owned by the service, so it keeps updating while RuneLite is closed. */
 import { boardImage, MAX_IMAGE_ROWS } from './board-image.js';
+import { presentation } from './weekly.js';
 
 const DISCORD_COLOUR = 0x9f7839;
 const POSTING = '__posting__';
@@ -37,8 +38,10 @@ function safeText(value)
 export function hiscores(challenge, leaderboard, now = Date.now())
 {
 	const rankLimit = challenge.rank_limit ?? MAX_IMAGE_ROWS;
+	const display = presentation(challenge);
 	const state = JSON.stringify({
-		style: 4,
+		style: challenge.event_type && challenge.event_type !== 'BOSS' ? 5 : 4,
+		...(challenge.event_type && challenge.event_type !== 'BOSS' ? { display } : {}),
 		name: challenge.name,
 		boss: challenge.boss,
 		code: challenge.code,
@@ -48,10 +51,10 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 		rows: leaderboard.slice(0, rankLimit).map(row => [row.rsn, row.points])
 	});
 	const description = `**${safeText(challenge.name).slice(0, 120)}**\n`
-		+ `Boss: **${safeText(challenge.boss).slice(0, 120)}**  •  Code: \`${safeText(challenge.code)}\`\n`
+		+ `${display.target}: **${safeText(challenge.boss).slice(0, 120)}**  •  Code: \`${safeText(challenge.code)}\`\n`
 		+ `⏳ Ends <t:${Math.floor(challenge.ends_at / 1000)}:R>`;
 	const embeds = [{
-		title: '⚔️ BOSS OF THE WEEK · HISCORES',
+		title: `⚔️ ${display.title} · HISCORES`,
 		description,
 		color: DISCORD_COLOUR,
 		image: { url: 'attachment://hiscores.png' },
@@ -200,7 +203,7 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 {
 	const board = await env.DB.prepare(
 		`SELECT b.webhook_url, b.message_id, b.last_state, b.rank_limit,
-		        c.code, c.name, c.boss, c.ends_at
+		        c.code, c.name, c.boss, c.ends_at, c.event_type, c.event_options
 		   FROM discord_boards b JOIN challenges c ON c.code = b.challenge_code
 		  WHERE b.challenge_code = ?`)
 		.bind(code).first();

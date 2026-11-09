@@ -3,6 +3,8 @@ package com.botw.track;
 import com.botw.BotwConfig;
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
+import com.botw.data.ChallengeType;
+import com.botw.data.WeeklyTargets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -14,6 +16,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
 import net.runelite.api.ItemComposition;
 import net.runelite.api.NPC;
 import net.runelite.api.events.ChatMessage;
@@ -22,6 +25,7 @@ import net.runelite.client.events.NpcLootReceived;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.ItemStack;
 import net.runelite.client.plugins.loottracker.LootReceived;
+import net.runelite.client.util.Text;
 import net.runelite.http.api.loottracker.LootRecordType;
 
 /**
@@ -80,6 +84,10 @@ public class KillTracker
 	 */
 	private static final long PET_WINDOW_MS = 60_000;
 
+	private static final String COLLECTION_LOG = "New item added to your collection log: ";
+	private static final long NAMED_PET_DEDUP_MS = 6_000;
+	private final Map<String, Long> namedPets = new HashMap<>();
+	private final Client client;
 	private final Outbox outbox;
 	private final ChallengeStore challenges;
 	private final ItemManager itemManager;
@@ -108,6 +116,7 @@ public class KillTracker
 
 	@Inject
 	private KillTracker(
+		Client client,
 		Outbox outbox,
 		ChallengeStore challenges,
 		ItemManager itemManager,
@@ -115,6 +124,7 @@ public class KillTracker
 		BossDrops bossDrops,
 		BotwConfig config)
 	{
+		this.client = client;
 		this.outbox = outbox;
 		this.challenges = challenges;
 		this.itemManager = itemManager;
@@ -132,7 +142,7 @@ public class KillTracker
 			return;
 		}
 
-		record(npc.getName(), event.getItems());
+		record(npc.getName(), event.getItems(), 1, false);
 	}
 
 	@Subscribe
@@ -144,7 +154,7 @@ public class KillTracker
 		}
 
 		// A chest can pay out for several kills at once; the amount says how many.
-		record(event.getName(), event.getItems(), Math.max(1, event.getAmount()));
+		record(event.getName(), event.getItems(), Math.max(1, event.getAmount()), true);
 	}
 
 	/**
@@ -167,7 +177,12 @@ public class KillTracker
 			return;
 		}
 
-		if (!isPetMessage(event.getMessage()))
+		String message = Text.removeTags(event.getMessage());
+		if (message.startsWith(COLLECTION_LOG) && WeeklyTargets.tracksWorld(client))
+		{
+			recordNamedPet(message.substring(COLLECTION_LOG.length()).trim());
+		}
+		if (!isPetMessage(message))
 		{
 			return;
 		}
@@ -184,7 +199,7 @@ public class KillTracker
 
 			// A kill this pet could have come from. Where there is none yet the announcement is kept
 			// instead, and the next kill picks it up — the raids announce the pet before they pay out.
-			if (challenge.isRunning(now) && killed != null && fromTheSameKill(now, killed))
+			if (challenge.getEventType() == ChallengeType.BOSS && challenge.isRunning(now) && killed != null && fromTheSameKill(now, killed))
 			{
 				recordPet(challenge, recorded);
 			}
@@ -243,17 +258,12 @@ public class KillTracker
 		return type == LootRecordType.EVENT;
 	}
 
-	private void record(String source, Collection<ItemStack> items)
-	{
-		record(source, items, 1);
-	}
-
 	/**
 	 * @param source the boss's name as the game gave it
 	 * @param items  everything that dropped
 	 * @param kills  how many kills this payout covers, which is more than one for a chest
 	 */
-	private void record(String source, Collection<ItemStack> items, int kills)
+	private void record(String source, Collection<ItemStack> items, int kills, boolean chest)
 	{
 		long now = System.currentTimeMillis();
 		List<PendingEvent> recorded = new ArrayList<>();
@@ -262,14 +272,38 @@ public class KillTracker
 		// choose. Each joined challenge is considered on its own.
 		for (Challenge challenge : challenges.joined())
 		{
-			if (!matches(challenge.getBoss(), source) || !challenge.isRunning(now))
+			if (!challenge.isRunning(now)
+				|| (challenge.getEventType() != ChallengeType.BOSS && !WeeklyTargets.tracksWorld(client)))
 			{
 				continue;
 			}
+			boolean count;
+			boolean petSource = false;
+			switch (challenge.getEventType())
+			{
+				case RAID:
+					if (!chest || !WeeklyTargets.raidSource(challenge.getBoss(), source)) continue;
+					count = false; // Raid KC comes from the completion message, not the chest.
+					break;
+				case CLUE:
+					if (!chest || !source.equalsIgnoreCase("Clue Scroll (" + challenge.getBoss() + ")")) continue;
+					count = true;
+					break;
+				case MINIGAME:
+					if (!chest || !source.equalsIgnoreCase(challenge.getBoss())) continue;
+					count = false; // Searches at the Reward Guardian are not closed rifts.
+					break;
+				case SKILL:
+					count = false;
+					break;
+				default:
+					if (!matches(challenge.getBoss(), source)) continue;
+					count = true;
+					petSource = true;
+			}
+			if (petSource) lastKillAt.put(challenge.getCode(), now);
 
-			lastKillAt.put(challenge.getCode(), now);
-
-			for (int i = 0; i < kills; i++)
+			for (int i = 0; count && i < kills; i++)
 			{
 				recorded.add(PendingEvent.kill(challenge.getCode(), now));
 			}
@@ -281,6 +315,8 @@ public class KillTracker
 					String name = itemName(stack);
 					if (name != null && challenge.counts(name))
 					{
+						if (challenge.getEventType() != ChallengeType.BOSS && isNamedPet(challenge, name)
+							&& !newPetNotice(challenge, name, now)) continue;
 						recorded.add(scoringDrop(challenge, name, stack.getQuantity(), now));
 					}
 				}
@@ -288,7 +324,7 @@ public class KillTracker
 
 			// A pet announced just before this kill was recorded. That is the ordinary way round at the
 			// raids: the pet is announced when the raid ends, the kill when the chest is opened.
-			if (fromTheSameKill(petDroppedAt, now))
+			if (petSource && fromTheSameKill(petDroppedAt, now))
 			{
 				recordPet(challenge, recorded);
 			}
@@ -335,6 +371,40 @@ public class KillTracker
 	 * Screenshots are only for drops that actually score. One per kill would bury the ones worth
 	 * keeping and fill someone's disk in a week.
 	 */
+	private void recordNamedPet(String item)
+	{
+		long now = System.currentTimeMillis();
+		List<PendingEvent> recorded = new ArrayList<>();
+		for (Challenge challenge : challenges.joined())
+		{
+			if (challenge.isRunning(now) && challenge.counts(item) && isNamedPet(challenge, item)
+				&& newPetNotice(challenge, item, now))
+			{
+				recorded.add(scoringDrop(challenge, item, 1, now));
+			}
+		}
+		submit(recorded, item);
+	}
+
+	private boolean newPetNotice(Challenge challenge, String item, long now)
+	{
+		namedPets.values().removeIf(last -> now - last > NAMED_PET_DEDUP_MS);
+		String key = challenge.getCode() + ":" + item.toLowerCase(Locale.ROOT);
+		return namedPets.put(key, now) == null;
+	}
+
+	private boolean isNamedPet(Challenge challenge, String item)
+	{
+		switch (challenge.getEventType())
+		{
+			case RAID: return item.equalsIgnoreCase(WeeklyTargets.raidPet(challenge.getBoss()));
+			case SKILL: return bossDrops.isPet(item);
+			case MINIGAME: return item.equalsIgnoreCase("Abyssal protector");
+			case CLUE: return "Master".equals(challenge.getBoss()) && item.equalsIgnoreCase("Bloodhound");
+			default: return false;
+		}
+	}
+
 	private PendingEvent scoringDrop(Challenge challenge, String itemName, int quantity, long occurredAt)
 	{
 		// Keyed to the event, so the creator's copy is tied to the drop it is evidence of rather than to

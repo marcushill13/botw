@@ -2,6 +2,8 @@ package com.botw.data;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -32,6 +34,29 @@ public class Challenge
 	private int kcPoints = 1;
 
 	private List<DropRule> drops = new ArrayList<>();
+
+	private ChallengeType eventType = ChallengeType.BOSS;
+	private boolean raidByPoints;
+	private Map<String, Integer> raidPoints = new LinkedHashMap<>();
+	private List<PrizeCandidate> prizeCandidates = new ArrayList<>();
+
+	public String scoreUnit()
+	{
+		switch (eventType)
+		{
+			case SKILL: return "XP";
+			case CLUE: return "clues";
+			case MINIGAME: return "rifts";
+			case RAID: return raidByPoints ? "points" : "clears";
+			default: return "points";
+		}
+	}
+
+	public boolean matchesDrop(String itemName)
+	{
+		return drops.stream().anyMatch(rule -> rule.getName().equalsIgnoreCase(itemName)
+			&& (rule.getPoints() > 0 || rule.isFirstPrize() || rule.isPurple()));
+	}
 
 	private String creatorRsn = "";
 
@@ -74,6 +99,6 @@ public class Challenge
 
 	public boolean counts(String itemName)
 	{
-		return pointsForDrop(itemName) > 0;
+		return matchesDrop(itemName);
 	}
 }

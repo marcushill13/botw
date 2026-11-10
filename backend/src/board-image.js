@@ -1,4 +1,6 @@
 import { presentation } from './weekly.js';
+import { boardTheme } from './board-themes.js';
+import { crestRows } from './board-icons.js';
 
 /** A small dependency-free PNG renderer for a parchment-style Discord board.
  *  Discord cannot style an embed's background or font, so the artwork is attached to the
@@ -7,11 +9,37 @@ import { presentation } from './weekly.js';
 
 export const MAX_IMAGE_ROWS = 25;
 const WIDTH = 440;
-const PALETTE = [
-	[25, 24, 20], [48, 44, 34], [78, 70, 52], [121, 93, 51],
-	[155, 119, 65], [202, 170, 109], [219, 190, 129], [226, 201, 147],
-	[192, 155, 95], [49, 37, 25], [92, 66, 37], [145, 93, 37]
-];
+const INK = 9;
+const MUTED_INK = 10;
+const PODIUM_INK = 11;
+const ACCENT = 12;
+const SHADE = 13;
+const HIGHLIGHT = 14;
+const GOLD = 15;
+const STRIPE = 16;
+const LIGHT_TEXT = 17;
+const MEDALLION = 18;
+const CREST_COLOURS = [0, INK, SHADE, ACCENT, HIGHLIGHT, GOLD];
+
+function mix(base, tint, amount)
+{
+	return base.map((value, i) => Math.round(value * (1 - amount) + tint[i] * amount));
+}
+
+function themedPalette(colour)
+{
+	const accent = [colour >> 16, colour >> 8 & 255, colour & 255];
+	return [
+		mix([24, 23, 24], accent, .12), mix([43, 41, 42], accent, .16),
+		mix([66, 63, 62], accent, .25), mix([70, 52, 33], accent, .45),
+		mix([155, 119, 65], accent, .37), mix([206, 164, 100], accent, .24),
+		mix([230, 205, 155], accent, .14), mix([243, 221, 175], accent, .10),
+		mix([204, 168, 109], accent, .18), [43, 32, 24], mix([53, 42, 34], accent, .24),
+		mix([45, 29, 20], accent, .40), accent, mix([38, 28, 27], accent, .55),
+		mix([252, 246, 226], accent, .42), [246, 199, 103],
+		mix([240, 221, 181], accent, .10), [251, 234, 191], mix([32, 25, 26], accent, .30)
+	];
+}
 const GRAIN = new Uint8Array(32 * 32);
 let grainSeed = 247;
 for (let i = 0; i < GRAIN.length; i++)
@@ -50,12 +78,14 @@ const FONT = {
 	'o': '00000e1111110e', 'd': '01010d1311130d', 'e': '00000e111f100f',
 	' ': '00000000000000', '-': '0000001f000000', '.': '00000000000004',
 	':': '00040000040000', '/': '01010204081010', '?': '0e110102040004',
-	'+': '0004041f040400', "'": '04040800000000'
+	'+': '0004041f040400', "'": '04040800000000', ',': '00000000000408',
+	'(': '02040808080402', ')': '08040202020408', '&': '0c12140c15120d',
+	'!': '04040404040004', '_': '0000000000001f'
 };
 
 function textWidth(value, scale)
 {
-	return String(value).length * 6 * scale;
+	return Math.max(0, [...String(value)].length * 6 - 1) * scale;
 }
 
 function setPixel(pixels, height, x, y, colour)
@@ -74,7 +104,7 @@ function rect(pixels, height, x, y, width, tall, colour)
 	}
 }
 
-function write(pixels, height, value, x, y, colour = 9, scale = 2, preserveCase = false)
+function write(pixels, height, value, x, y, colour = INK, scale = 2, preserveCase = false)
 {
 	for (const character of preserveCase ? String(value) : String(value).toUpperCase())
 	{
@@ -91,6 +121,76 @@ function write(pixels, height, value, x, y, colour = 9, scale = 2, preserveCase 
 			}
 		}
 		x += 6 * scale;
+	}
+}
+
+function centered(pixels, height, value, y, colour, scale = 2)
+{
+	write(pixels, height, value, Math.floor((WIDTH - textWidth(value, scale)) / 2), y, colour, scale);
+}
+
+function fit(value, limit)
+{
+	const letters = [...String(value ?? '').replace(/\s+/g, ' ').trim()];
+	return letters.length <= limit ? letters.join('') : letters.slice(0, limit - 3).join('').trimEnd() + '...';
+}
+
+function diamond(pixels, height, x, y, radius, colour)
+{
+	for (let row = -radius; row <= radius; row++)
+	{
+		const span = radius - Math.abs(row);
+		rect(pixels, height, x - span, y + row, 2 * span + 1, 1, colour);
+	}
+}
+
+function crest(pixels, height, theme)
+{
+	// Stepped corners keep the frame and the original pixel art in the same style.
+	const x = WIDTH / 2;
+	const y = 88;
+	for (let dy = -26; dy <= 26; dy++)
+	{
+		const span = Math.min(26, 42 - Math.abs(dy));
+		rect(pixels, height, x - span, y + dy, 2 * span + 1, 1, SHADE);
+		if (Math.abs(dy) < 25)
+		{
+			rect(pixels, height, x - span + 2, y + dy, 2 * span - 3, 1,
+				Math.abs(dy) >= 22 ? ACCENT : MEDALLION);
+			setPixel(pixels, height, x - span + 2, y + dy, ACCENT);
+			setPixel(pixels, height, x + span - 2, y + dy, ACCENT);
+		}
+	}
+
+	const rows = crestRows(theme.icon);
+	const scale = rows[0].length > 9 ? 3 : 4;
+	const top = y - Math.floor(rows.length * scale / 2);
+	const left = x - Math.floor(rows[0].length * scale / 2);
+	for (let i = 0; i < rows.length; i++)
+	{
+		for (let j = 0; j < rows[i].length; j++)
+		{
+			const colour = CREST_COLOURS[Number(rows[i][j])];
+			if (colour !== undefined) rect(pixels, height, left + j * scale, top + i * scale, scale, scale, colour);
+		}
+	}
+
+	for (const [start, end] of [[58, 180], [260, WIDTH - 58]])
+	{
+		const middle = (start + end) / 2;
+		rect(pixels, height, start, y, end - start + 1, 1, ACCENT);
+		diamond(pixels, height, start, y, 2, ACCENT);
+		diamond(pixels, height, end, y, 2, ACCENT);
+		if (theme.clue)
+		{
+			diamond(pixels, height, middle, y, 14, SHADE);
+			write(pixels, height, '?', middle - 5, y - 7, GOLD);
+		}
+		else
+		{
+			diamond(pixels, height, middle, y, 8, SHADE);
+			diamond(pixels, height, middle, y, 4, GOLD);
+		}
 	}
 }
 
@@ -170,7 +270,7 @@ function deflateStored(raw)
 	return out;
 }
 
-function png(pixels, height)
+function png(pixels, height, palette)
 {
 	const scanlines = new Uint8Array(height * (WIDTH + 1));
 	for (let y = 0; y < height; y++)
@@ -186,7 +286,7 @@ function png(pixels, height)
 	return join([
 		Uint8Array.of(137, 80, 78, 71, 13, 10, 26, 10),
 		chunk('IHDR', header),
-		chunk('PLTE', Uint8Array.from(PALETTE.flat())),
+		chunk('PLTE', Uint8Array.from(palette.flat())),
 		chunk('IDAT', compressed),
 		chunk('IEND', new Uint8Array())
 	]);
@@ -195,7 +295,8 @@ function png(pixels, height)
 export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 {
 	const rows = leaderboard.slice(0, rankLimit);
-	const height = 260 + Math.max(1, rows.length) * 21;
+	const theme = boardTheme(challenge);
+	const height = 282 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
 	// Rough stone framing and an uneven, flecked sheet of parchment.
@@ -228,40 +329,54 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 	}
 
 	const display = presentation(challenge);
-	const title = display.title;
-	write(pixels, height, title, (WIDTH - textWidth(title, 3)) / 2, 58, 9, 3);
-	const subtitle = `${String(challenge.boss ?? 'BOSS').slice(0, 20)} HISCORES`;
-	write(pixels, height, subtitle, (WIDTH - textWidth(subtitle, 2)) / 2, 89, 10);
-	const event = String(challenge.name ?? '').slice(0, 32);
-	write(pixels, height, event, (WIDTH - textWidth(event, 2)) / 2, 120, 9);
-	rect(pixels, height, 42, 146, WIDTH - 84, 2, 4);
-	write(pixels, height, 'RANK', 47, 159);
-	write(pixels, height, 'NAME', 117, 159);
-	write(pixels, height, display.score, 380 - textWidth(display.score, 2), 159);
-	rect(pixels, height, 42, 178, WIDTH - 84, 1, 4);
+	centered(pixels, height, `${display.title} HISCORES`, 39, INK);
+	crest(pixels, height, theme);
+	const target = fit(challenge.boss || display.target, 29);
+	const targetScale = textWidth(target, 3) <= WIDTH - 92 ? 3 : 2;
+	centered(pixels, height, target, targetScale === 3 ? 125 : 129, SHADE, targetScale);
+	const event = fit(challenge.name, 29);
+	if (event && event.toLowerCase() !== target.toLowerCase())
+	{
+		centered(pixels, height, event, 153, MUTED_INK, 1);
+	}
+	else
+	{
+		diamond(pixels, height, WIDTH / 2, 157, 3, ACCENT);
+	}
+
+	rect(pixels, height, 41, 175, WIDTH - 82, 23, SHADE);
+	rect(pixels, height, 41, 175, WIDTH - 82, 2, ACCENT);
+	write(pixels, height, 'RANK', 49, 181, LIGHT_TEXT);
+	write(pixels, height, 'NAME', 117, 181, LIGHT_TEXT);
+	write(pixels, height, display.score, 383 - textWidth(display.score, 2), 181, LIGHT_TEXT);
 
 	if (!rows.length)
 	{
-		write(pixels, height, 'AWAITING CHALLENGERS', 95, 194, 10);
+		centered(pixels, height, 'AWAITING CHALLENGERS', 211, MUTED_INK);
 	}
 	for (let i = 0; i < rows.length; i++)
 	{
-		const y = 190 + i * 21;
-		write(pixels, height, String(i + 1).padStart(2), 52, y, i < 3 ? 11 : 9);
+		const y = 206 + i * 21;
+		if (i % 2 === 0) rect(pixels, height, 41, y - 3, WIDTH - 82, 20, STRIPE);
+		if (i < 3) diamond(pixels, height, 88, y + 6, 3, ACCENT);
+		const colour = i < 3 ? PODIUM_INK : INK;
+		write(pixels, height, String(i + 1).padStart(2), 53, y, colour);
 		write(pixels, height, String(rows[i].rsn ?? '').slice(0, 12), 117, y);
 		const points = Number(rows[i].points ?? 0).toLocaleString('en-US');
-		write(pixels, height, points, 380 - textWidth(points, 2), y, i < 3 ? 11 : 9);
+		write(pixels, height, points, 383 - textWidth(points, 2), y, colour);
 	}
 
+	const footerY = height - 64;
+	rect(pixels, height, 54, footerY - 7, WIDTH - 108, 1, ACCENT);
 	if (leaderboard.length > rows.length)
 	{
 		const note = `+${leaderboard.length - rows.length} MORE IN RUNELITE`;
-		write(pixels, height, note, (WIDTH - textWidth(note, 2)) / 2, height - 65, 10);
+		centered(pixels, height, note, footerY, MUTED_INK);
 	}
 	else
 	{
 		const note = `Code: ${String(challenge.code ?? '').slice(0, 8)}`;
-		write(pixels, height, note, (WIDTH - textWidth(note, 1)) / 2, height - 61, 10, 1, true);
+		write(pixels, height, note, Math.floor((WIDTH - textWidth(note, 1)) / 2), footerY + 3, MUTED_INK, 1, true);
 	}
-	return png(pixels, height);
+	return png(pixels, height, themedPalette(theme.colour));
 }

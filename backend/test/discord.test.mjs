@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { inflateSync } from 'node:zlib';
 import { boardImage } from '../src/board-image.js';
+import { boardTheme } from '../src/board-themes.js';
+import { validateWeekly } from '../src/weekly.js';
 import { connectDiscord, hiscores, syncDiscordBoard, validWebhookUrl } from '../src/discord.js';
 
 const webhook = 'https://discord.com/api/webhooks/12345/test_token';
@@ -26,7 +30,7 @@ test('renders readable OSRS ranks without pinging Discord users', () =>
 		[{ rsn: 'A Hero', points: 120 }, { rsn: '@everyone', points: 35 }],
 		1700000000000);
 	assert.equal(message.embeds[0].image.url, 'attachment://hiscores.png');
-	assert.equal(message.embeds[0].color, 0x9f7839);
+	assert.equal(message.embeds[0].color, 0x487faf);
 	assert.deepEqual(message.allowed_mentions, { parse: [] });
 });
 
@@ -37,6 +41,88 @@ test('renders a valid parchment PNG with the current scores', async () =>
 		[{ rsn: 'A Hero', points: 120 }, { rsn: 'Clan Mate', points: 35 }]);
 	assert.deepEqual([...image.slice(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
 	assert.ok(image.length > 1000);
+});
+
+function decodeBoard(image)
+{
+	const view = new DataView(image.buffer, image.byteOffset, image.length);
+	const width = view.getUint32(16);
+	const height = view.getUint32(20);
+	let palette;
+	const data = [];
+	for (let pos = 8; pos < image.length;)
+	{
+		const size = view.getUint32(pos);
+		const kind = Buffer.from(image.subarray(pos + 4, pos + 8)).toString();
+		const bytes = image.subarray(pos + 8, pos + 8 + size);
+		if (kind === 'PLTE') palette = bytes;
+		if (kind === 'IDAT') data.push(bytes);
+		pos += size + 12;
+	}
+	const pixels = inflateSync(Buffer.concat(data));
+	const indexAt = (x, y) => pixels[y * (width + 1) + x + 1];
+	return {
+		height,
+		colourAt(x, y)
+		{
+			const offset = indexAt(x, y) * 3;
+			return palette[offset] << 16 | palette[offset + 1] << 8 | palette[offset + 2];
+		},
+		indices(x, y, wide, tall)
+		{
+			return Array.from({ length: wide * tall }, (_, i) => indexAt(x + i % wide, y + Math.floor(i / wide)));
+		}
+	};
+}
+
+test('renders activity crests and matches the Discord accent without changing scores', () =>
+{
+	const leaderboard = [{ rsn: 'A Hero', points: 1234567 }];
+	const base = { name: 'Clan week', code: 'ABC234', ends_at: 1800000000000 };
+	const ice = { ...base, boss: 'Vorkath' };
+	const clue = { ...base, boss: 'Medium', event_type: 'CLUE' };
+	const mage = { ...base, boss: 'Magic', event_type: 'SKILL' };
+	const mine = { ...base, boss: 'Volcanic Mine', event_type: 'MINIGAME' };
+	const rendered = [ice, clue, mage, mine].map(event =>
+	{
+		const png = decodeBoard(boardImage(event, leaderboard));
+		const { state, message } = hiscores(event, leaderboard);
+		assert.equal(message.embeds[0].color, png.colourAt(41, 175));
+		assert.deepEqual(JSON.parse(state).rows, [['A Hero', 1234567]]);
+		return png;
+	});
+	assert.equal(new Set(rendered.map(png => png.colourAt(41, 175))).size, rendered.length);
+	assert.equal(new Set(rendered.map(png => png.indices(202, 70, 36, 36).join())).size, rendered.length);
+	assert.notDeepEqual(rendered[0].indices(110, 72, 16, 34), rendered[1].indices(110, 72, 16, 34));
+	assert.deepEqual(rendered[0].indices(117, 206, 72, 14), rendered[1].indices(117, 206, 72, 14));
+});
+
+test('covers the full challenge catalogue and has a stable fallback for future bosses', () =>
+{
+	const { bosses } = JSON.parse(readFileSync(new URL('../../src/main/resources/com/botw/boss-drops.json', import.meta.url)));
+	const targets = {
+		BOSS: bosses.map(boss => boss.name),
+		RAID: ['Chambers of Xeric', 'Theatre of Blood', 'Tombs of Amascut', 'The Fractured Archive'],
+		CLUE: ['Beginner', 'Easy', 'Medium', 'Hard', 'Elite', 'Master'],
+		SKILL: 'Attack Defence Strength Hitpoints Ranged Prayer Magic Cooking Woodcutting Fletching Fishing Firemaking Crafting Smithing Mining Herblore Agility Thieving Slayer Farming Runecraft Hunter Construction Sailing'.split(' '),
+		MINIGAME: ['Guardians of the Rift', 'Vale Totems', 'Volcanic Mine', 'Hallowed Sepulchre',
+			'The Gauntlet', 'Corrupted Gauntlet', 'Zalcano', 'Tempoross']
+	};
+	for (const [eventType, names] of Object.entries(targets))
+	{
+		const styles = names.map(boss =>
+		{
+			assert.equal(validateWeekly({ boss, eventType }), null);
+			const challenge = { boss, event_type: eventType };
+			const theme = boardTheme(challenge);
+			// Unknown names use the boss fallback regardless of their category.
+			assert.notDeepEqual(theme, { ...boardTheme({ boss, event_type: 'unknown' }), clue: eventType === 'CLUE' }, boss);
+			assert.deepEqual(boardTheme({ ...challenge, boss: boss.toUpperCase() }), theme);
+			return theme.colour;
+		});
+		assert.equal(new Set(styles).size, names.length, eventType);
+	}
+	assert.deepEqual(boardTheme({ boss: ' New Boss ' }), boardTheme({ boss: 'new boss' }));
 });
 
 test('keeps one embed when there are more players than the Discord rank limit', () =>
@@ -183,7 +269,10 @@ test('posts once and updates the same message when the score or rank limit chang
 		const legacy = await connectDiscord('ABC234', webhook, 'creator', env, leaderboard);
 		assert.equal(legacy.status, 200);
 		assert.equal(row.rank_limit, 20);
-		assert.deepEqual(calls.map(call => call.method), ['POST', 'PATCH', 'GET', 'PATCH', 'GET']);
+		row.last_state = JSON.stringify({ ...JSON.parse(row.last_state), style: 4 });
+		await syncDiscordBoard('ABC234', env, leaderboard);
+		assert.equal(calls.at(-1).url, `${webhook}/messages/message123`);
+		assert.deepEqual(calls.map(call => call.method), ['POST', 'PATCH', 'GET', 'PATCH', 'GET', 'PATCH']);
 	}
 	finally
 	{

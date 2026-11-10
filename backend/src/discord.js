@@ -1,8 +1,8 @@
 /** The Discord message is owned by the service, so it keeps updating while RuneLite is closed. */
 import { boardImage, MAX_IMAGE_ROWS } from './board-image.js';
 import { presentation } from './weekly.js';
+import { BOARD_STYLE, boardTheme } from './board-themes.js';
 
-const DISCORD_COLOUR = 0x9f7839;
 const POSTING = '__posting__';
 
 export function validWebhookUrl(value)
@@ -40,8 +40,8 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 	const rankLimit = challenge.rank_limit ?? MAX_IMAGE_ROWS;
 	const display = presentation(challenge);
 	const state = JSON.stringify({
-		style: challenge.event_type && challenge.event_type !== 'BOSS' ? 5 : 4,
-		...(challenge.event_type && challenge.event_type !== 'BOSS' ? { display } : {}),
+		style: BOARD_STYLE,
+		display,
 		name: challenge.name,
 		boss: challenge.boss,
 		code: challenge.code,
@@ -56,7 +56,7 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 	const embeds = [{
 		title: `⚔️ ${display.title} · HISCORES`,
 		description,
-		color: DISCORD_COLOUR,
+		color: boardTheme(challenge).colour,
 		image: { url: 'attachment://hiscores.png' },
 		footer: { text: `One board, always current · Last score change ${new Date(now).toISOString()}` }
 	}];
@@ -78,7 +78,7 @@ async function discordRequest(url, method, message, picture)
 	{
 		const form = new FormData();
 		form.set('payload_json', JSON.stringify({ ...message,
-			attachments: [{ id: 0, filename: 'hiscores.png', description: 'Boss of the Week Hiscores' }] }));
+			attachments: [{ id: 0, filename: 'hiscores.png', description: message.embeds[0].title }] }));
 		form.set('files[0]', new Blob([picture], { type: 'image/png' }), 'hiscores.png');
 		body = form;
 	}

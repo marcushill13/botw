@@ -58,8 +58,9 @@ identify by name.
 
 The creator can add a webhook for a Discord channel in the BOTW plugin settings, open a challenge,
 and select **Post to Discord**. The service posts an original parchment-style Hiscores image with
-**Rank / Name / Points** and edits that same message and image when points or ranks change,
-checking about once a minute. It keeps working while the creator's RuneLite client is closed.
+**Rank / Name / Score** (XP, clears, points, or the activity’s count) and edits the same message when ranks or scores change,
+checking about once a minute. The parchment, pixel crest and Discord accent reflect the selected
+boss, raid, skill, clue tier or minigame. It keeps working while the creator's RuneLite client is closed.
 Use **Discord ranks** to choose how many names appear on the image (1–25, default 25).
 If there are more players, the image shows how many are left with “+N more in RuneLite”.
 To change the limit after posting, edit the number and click **Update Discord**. The full leaderboard

@@ -58,7 +58,7 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 		description,
 		color: boardTheme(challenge).colour,
 		image: { url: 'attachment://hiscores.png' },
-		footer: { text: `One board, always current · Last score change ${new Date(now).toISOString()}` }
+		footer: { text: `OSRS artwork © Jagex · Updated ${new Date(now).toISOString()}` }
 	}];
 
 	return {

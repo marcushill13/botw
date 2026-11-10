@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { inflateSync } from 'node:zlib';
 import { boardImage } from '../src/board-image.js';
+import { boardArtwork } from '../src/board-icons.js';
 import { boardTheme } from '../src/board-themes.js';
 import { validateWeekly } from '../src/weekly.js';
 import { connectDiscord, hiscores, syncDiscordBoard, validWebhookUrl } from '../src/discord.js';
@@ -71,11 +72,16 @@ function decodeBoard(image)
 		indices(x, y, wide, tall)
 		{
 			return Array.from({ length: wide * tall }, (_, i) => indexAt(x + i % wide, y + Math.floor(i / wide)));
+		},
+		spriteColours(x, y, wide, tall, basePaletteSize)
+		{
+			return new Set(this.indices(x, y, wide, tall).filter(index => index >= basePaletteSize)
+				.map(index => palette[index * 3] << 16 | palette[index * 3 + 1] << 8 | palette[index * 3 + 2]));
 		}
 	};
 }
 
-test('renders activity crests and matches the Discord accent without changing scores', () =>
+test('renders the original sprite colours and Discord accent without changing scores', () =>
 {
 	const leaderboard = [{ rsn: 'A Hero', points: 1234567 }];
 	const base = { name: 'Clan week', code: 'ABC234', ends_at: 1800000000000 };
@@ -89,6 +95,9 @@ test('renders activity crests and matches the Discord accent without changing sc
 		const { state, message } = hiscores(event, leaderboard);
 		assert.equal(message.embeds[0].color, png.colourAt(41, 175));
 		assert.deepEqual(JSON.parse(state).rows, [['A Hero', 1234567]]);
+		assert.deepEqual(png.spriteColours(198, 66, 44, 44, 19),
+			new Set(boardArtwork(event).colours.map(([r, g, b]) => r << 16 | g << 8 | b)));
+		assert.match(message.embeds[0].footer.text, /© Jagex/);
 		return png;
 	});
 	assert.equal(new Set(rendered.map(png => png.colourAt(41, 175))).size, rendered.length);
@@ -108,6 +117,7 @@ test('covers the full challenge catalogue and has a stable fallback for future b
 		MINIGAME: ['Guardians of the Rift', 'Vale Totems', 'Volcanic Mine', 'Hallowed Sepulchre',
 			'The Gauntlet', 'Corrupted Gauntlet', 'Zalcano', 'Tempoross']
 	};
+	const combatIcon = boardArtwork({ boss: 'A future boss' });
 	for (const [eventType, names] of Object.entries(targets))
 	{
 		const styles = names.map(boss =>
@@ -118,6 +128,11 @@ test('covers the full challenge catalogue and has a stable fallback for future b
 			// Unknown names use the boss fallback regardless of their category.
 			assert.notDeepEqual(theme, { ...boardTheme({ boss, event_type: 'unknown' }), clue: eventType === 'CLUE' }, boss);
 			assert.deepEqual(boardTheme({ ...challenge, boss: boss.toUpperCase() }), theme);
+			const sprite = boardArtwork(challenge);
+			assert.notDeepEqual(sprite, combatIcon, boss);
+			assert.equal(sprite.runs.reduce((length, run) => length + (run >>> 6) + 1, 0),
+				sprite.width * sprite.height, boss);
+			assert.ok(sprite.runs.every(run => (run & 63) <= sprite.colours.length), boss);
 			return theme.colour;
 		});
 		assert.equal(new Set(styles).size, names.length, eventType);

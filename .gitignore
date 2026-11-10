@@ -9,3 +9,5 @@ out/
 node_modules/
 .wrangler/
 backend/wrangler.test.toml
+
+.board-art-cache/

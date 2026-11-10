@@ -1,6 +1,6 @@
 import { presentation } from './weekly.js';
 import { boardTheme } from './board-themes.js';
-import { crestRows } from './board-icons.js';
+import { boardArtwork } from './board-icons.js';
 
 /** A small dependency-free PNG renderer for a parchment-style Discord board.
  *  Discord cannot style an embed's background or font, so the artwork is attached to the
@@ -14,12 +14,10 @@ const MUTED_INK = 10;
 const PODIUM_INK = 11;
 const ACCENT = 12;
 const SHADE = 13;
-const HIGHLIGHT = 14;
 const GOLD = 15;
 const STRIPE = 16;
 const LIGHT_TEXT = 17;
 const MEDALLION = 18;
-const CREST_COLOURS = [0, INK, SHADE, ACCENT, HIGHLIGHT, GOLD];
 
 function mix(base, tint, amount)
 {
@@ -37,7 +35,7 @@ function themedPalette(colour)
 		mix([204, 168, 109], accent, .18), [43, 32, 24], mix([53, 42, 34], accent, .24),
 		mix([45, 29, 20], accent, .40), accent, mix([38, 28, 27], accent, .55),
 		mix([252, 246, 226], accent, .42), [246, 199, 103],
-		mix([240, 221, 181], accent, .10), [251, 234, 191], mix([32, 25, 26], accent, .30)
+		mix([240, 221, 181], accent, .10), [251, 234, 191], mix([243, 223, 181], accent, .25)
 	];
 }
 const GRAIN = new Uint8Array(32 * 32);
@@ -144,9 +142,9 @@ function diamond(pixels, height, x, y, radius, colour)
 	}
 }
 
-function crest(pixels, height, theme)
+function artwork(pixels, height, palette, theme, challenge)
 {
-	// Stepped corners keep the frame and the original pixel art in the same style.
+	// A lighter inset keeps the dark outlines on the game sprites legible.
 	const x = WIDTH / 2;
 	const y = 88;
 	for (let dy = -26; dy <= 26; dy++)
@@ -162,16 +160,25 @@ function crest(pixels, height, theme)
 		}
 	}
 
-	const rows = crestRows(theme.icon);
-	const scale = rows[0].length > 9 ? 3 : 4;
-	const top = y - Math.floor(rows.length * scale / 2);
-	const left = x - Math.floor(rows[0].length * scale / 2);
-	for (let i = 0; i < rows.length; i++)
+	const sprite = boardArtwork(challenge);
+	const offset = palette.length - 1; // Sprite palette index 0 is transparent.
+	palette.push(...sprite.colours);
+	const left = x - Math.floor(sprite.width / 2);
+	const top = y - Math.floor(sprite.height / 2);
+	let position = 0;
+	for (const packed of sprite.runs)
 	{
-		for (let j = 0; j < rows[i].length; j++)
+		const index = packed & 63;
+		const length = (packed >>> 6) + 1;
+		if (!index)
 		{
-			const colour = CREST_COLOURS[Number(rows[i][j])];
-			if (colour !== undefined) rect(pixels, height, left + j * scale, top + i * scale, scale, scale, colour);
+			position += length;
+			continue;
+		}
+		for (let i = 0; i < length; i++, position++)
+		{
+			setPixel(pixels, height, left + position % sprite.width,
+				top + Math.floor(position / sprite.width), offset + index);
 		}
 	}
 
@@ -296,6 +303,7 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 {
 	const rows = leaderboard.slice(0, rankLimit);
 	const theme = boardTheme(challenge);
+	const palette = themedPalette(theme.colour);
 	const height = 282 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
@@ -330,7 +338,7 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 
 	const display = presentation(challenge);
 	centered(pixels, height, `${display.title} HISCORES`, 39, INK);
-	crest(pixels, height, theme);
+	artwork(pixels, height, palette, theme, challenge);
 	const target = fit(challenge.boss || display.target, 29);
 	const targetScale = textWidth(target, 3) <= WIDTH - 92 ? 3 : 2;
 	centered(pixels, height, target, targetScale === 3 ? 125 : 129, SHADE, targetScale);
@@ -378,5 +386,5 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 		const note = `Code: ${String(challenge.code ?? '').slice(0, 8)}`;
 		write(pixels, height, note, Math.floor((WIDTH - textWidth(note, 1)) / 2), footerY + 3, MUTED_INK, 1, true);
 	}
-	return png(pixels, height, themedPalette(theme.colour));
+	return png(pixels, height, palette);
 }

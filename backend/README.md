@@ -116,3 +116,14 @@ scores. Use a private Discord webhook to check the correct event title and score
 
 The backend tests require Node 22.13 or later for the SQLite integration tests:
 `node --test backend/test/*.test.mjs`.
+
+## Discord artwork
+
+Old School RuneScape artwork © Jagex Ltd. The images come from the [OSRS Wiki](https://oldschool.runescape.wiki/),
+[RuneLite](https://github.com/runelite/runelite), and [Wise Old Man](https://github.com/wise-old-man/wise-old-man).
+This is an unofficial community plugin. See the [source list](../scripts/board-art-sources.json)
+for each asset and the [Jagex Fan Content Policy](https://legal.jagex.com/docs/policies/fan-content-policy).
+
+The Worker reads only bundled sprites, with no outbound image requests. To update the catalogue,
+edit the source list and run `python3 scripts/pack-board-art.py` with Pillow installed. Bump
+`BOARD_STYLE` if the bundled artwork changes so active Discord messages pick it up.

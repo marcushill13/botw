@@ -36,9 +36,7 @@ import net.runelite.client.ui.PluginPanel;
 /**
  * The sidebar.
  * <p>
- * Three screens behind one panel: the list of challenges this account is in, the form for making one,
- * and one challenge open. A sidebar is too narrow to show more than one at a time, and tabs across the
- * top would spend a quarter of the width saying which of three things you are looking at.
+ * One screen at a time: the home list, the create or join flow, or an open challenge.
  * <p>
  * Every call to the service happens on the executor and comes back through the EDT. A request on the
  * client thread freezes the game, and a request on the EDT freezes the panel while it waits.
@@ -289,6 +287,11 @@ public class BotwPanel extends PluginPanel
 		content.repaint();
 	}
 
+	private void scrollToTop()
+	{
+		content.scrollRectToVisible(new Rectangle(0, 0, 1, 1));
+	}
+
 	/** Marker so {@link #refreshList()} can tell which screen is up without tracking state. */
 	private static class ListView extends JPanel
 	{
@@ -314,15 +317,7 @@ public class BotwPanel extends PluginPanel
 
 		list.add(Cards.gap(12));
 
-		list.add(new TileButton("Create a Boss Challenge", "Pick a boss and set the points", this::showCreate));
-		list.add(Cards.gap(8));
-		list.add(new TileButton("Create a Raid Challenge", "Most clears or raid points", () -> showCreate(ChallengeType.RAID)));
-		list.add(Cards.gap(8));
-		list.add(new TileButton("Create a Skill Challenge", "Rank by XP gained", () -> showCreate(ChallengeType.SKILL)));
-		list.add(Cards.gap(8));
-		list.add(new TileButton("Create a Clue Challenge", "Count caskets by tier", () -> showCreate(ChallengeType.CLUE)));
-		list.add(Cards.gap(8));
-		list.add(new TileButton("Create a Minigame Challenge", "Pick a minigame", () -> showCreate(ChallengeType.MINIGAME)));
+		list.add(new TileButton("Create a challenge", "Choose the type of event", this::showCreateTypes));
 		list.add(Cards.gap(8));
 		list.add(new TileButton("Join a challenge", "Enter a code from your clan", this::showJoin));
 
@@ -487,14 +482,48 @@ public class BotwPanel extends PluginPanel
 		return card;
 	}
 
-	private void showCreate()
+	private void showCreateTypes()
 	{
-		showCreate(ChallengeType.BOSS);
+		JPanel screen = new JPanel();
+		screen.setLayout(new BoxLayout(screen, BoxLayout.Y_AXIS));
+		screen.setBackground(Theme.BACKGROUND);
+
+		JButton back = Cards.button("← Home");
+		back.addActionListener(event ->
+		{
+			showList();
+			scrollToTop();
+		});
+		screen.add(back);
+		screen.add(Cards.gap(8));
+
+		JLabel heading = new JLabel("CREATE A CHALLENGE");
+		heading.setFont(Theme.figure(18f));
+		heading.setForeground(Theme.GOLD);
+		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
+		screen.add(heading);
+		screen.add(Cards.gap(4));
+		screen.add(muted("Choose a challenge type."));
+		screen.add(Cards.gap(8));
+
+		screen.add(new TileButton("Boss challenge", "Set points for kills and drops", () -> showCreate(ChallengeType.BOSS)));
+		screen.add(Cards.gap(8));
+		screen.add(new TileButton("Raid challenge", "Most clears or raid points", () -> showCreate(ChallengeType.RAID)));
+		screen.add(Cards.gap(8));
+		screen.add(new TileButton("Skill challenge", "Rank by XP gained", () -> showCreate(ChallengeType.SKILL)));
+		screen.add(Cards.gap(8));
+		screen.add(new TileButton("Clue challenge", "Count caskets by tier", () -> showCreate(ChallengeType.CLUE)));
+		screen.add(Cards.gap(8));
+		screen.add(new TileButton("Minigame challenge", "Choose an activity to track", () -> showCreate(ChallengeType.MINIGAME)));
+
+		show(screen);
+		scrollToTop();
 	}
 
 	private void showCreate(ChallengeType type)
 	{
-		show(new CreatePanel(bossDrops, itemManager, this::create, this::showList, type, null));
+		show(new CreatePanel(bossDrops, itemManager, this::create, this::showCreateTypes, type, null));
+		scrollToTop();
 	}
 
 	private void showEdit(Challenge challenge)

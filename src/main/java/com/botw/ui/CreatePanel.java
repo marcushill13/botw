@@ -120,6 +120,14 @@ public class CreatePanel extends JPanel
 		form.setBackground(Theme.BACKGROUND);
 		form.setBorder(BorderFactory.createEmptyBorder(4, 0, 8, Cards.SCROLLBAR_ALLOWANCE));
 
+		if (editing == null)
+		{
+			JButton back = Cards.button("← Challenge types");
+			back.addActionListener(event -> onCancel.run());
+			form.add(back);
+			form.add(Cards.gap(8));
+		}
+
 		JLabel heading = new JLabel(editing == null ? "NEW " + type.name() + " CHALLENGE" : "EDIT CHALLENGE");
 		heading.setFont(Theme.figure(16f));
 		heading.setForeground(Theme.GOLD);

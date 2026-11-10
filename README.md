@@ -9,18 +9,18 @@ remember.
 
 ## Setting one up
 
-1. **Create a challenge**, name it, and pick the start and end times in your own timezone
+1. Select **Create a challenge**, then **Boss challenge**. Name it and pick the start and end times in your own timezone
 2. Search for the boss. Its uniques and its pet fill themselves in, each with a points box and an X if
    you do not want it counted
 3. Add anything else by searching for it
 4. Say what a kill count is worth "every 10 kills = 1 point", or whatever you like
 5. Share the code it gives you
 
-Joining is that code and a button.
+To join any event, select **Join a challenge** and enter its code.
 
 ## Weekly events
 
-Create an event from its tile on the main screen. All event types share the same join codes,
+Select **Create a challenge** on the main screen, then choose the event type. All event types use the same kind of join code,
 dates, creator controls, evidence and Discord leaderboard controls.
 
 | Event | Main leaderboard | Extra rankings and prizes |

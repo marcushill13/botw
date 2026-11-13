@@ -115,7 +115,7 @@ test('covers the full challenge catalogue and has a stable fallback for future b
 		CLUE: ['Beginner', 'Easy', 'Medium', 'Hard', 'Elite', 'Master'],
 		SKILL: 'Attack Defence Strength Hitpoints Ranged Prayer Magic Cooking Woodcutting Fletching Fishing Firemaking Crafting Smithing Mining Herblore Agility Thieving Slayer Farming Runecraft Hunter Construction Sailing'.split(' '),
 		MINIGAME: ['Guardians of the Rift', 'Vale Totems', 'Volcanic Mine', 'Hallowed Sepulchre',
-			'The Gauntlet', 'Corrupted Gauntlet', 'Zalcano', 'Tempoross']
+			'The Gauntlet', 'Corrupted Gauntlet', 'Zalcano', 'Tempoross', 'Wintertodt']
 	};
 	const combatIcon = boardArtwork({ boss: 'A future boss' });
 	for (const [eventType, names] of Object.entries(targets))

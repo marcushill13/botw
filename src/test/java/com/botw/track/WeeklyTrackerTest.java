@@ -32,6 +32,19 @@ public class WeeklyTrackerTest
 	}
 
 	@Test
+	public void wintertodtDistinguishesCreditedWinsFromRewardSearches()
+	{
+		Matcher win = WeeklyTracker.completionMessage("Your subdued Wintertodt count is: <col=ff0000>1,035</col>.");
+		assertTrue(win.matches());
+		assertTrue(MinigameTarget.WINTERTODT.matchesCompletion(win.group(1)));
+		assertEquals("1,035", win.group(2));
+		assertFalse(MinigameTarget.TEMPOROSS.matchesCompletion(win.group(1)));
+		assertTrue(MinigameTarget.WINTERTODT.matchesLoot("Reward cart (Wintertodt)"));
+		assertFalse(MinigameTarget.WINTERTODT.matchesLoot("Reward pool (Tempoross)"));
+		assertFalse(WeeklyTracker.completionMessage("You found some loot: Phoenix").matches());
+	}
+
+	@Test
 	public void virtualLevelsDoNotEarnSkillCompetitionLevels()
 	{
 		assertEquals(98, WeeklyTracker.realLevel(Experience.getXpForLevel(98)));

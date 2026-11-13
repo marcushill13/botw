@@ -12,7 +12,8 @@ const MINIGAME_UNITS = {
 	'The Gauntlet': 'CLEARS',
 	'Corrupted Gauntlet': 'CLEARS',
 	'Zalcano': 'KILLS',
-	'Tempoross': 'WINS'
+	'Tempoross': 'WINS',
+	'Wintertodt': 'WINS'
 };
 const SKILLS = new Set(('Attack Defence Strength Hitpoints Ranged Prayer Magic Cooking Woodcutting '
 	+ 'Fletching Fishing Firemaking Crafting Smithing Mining Herblore Agility Thieving Slayer Farming '

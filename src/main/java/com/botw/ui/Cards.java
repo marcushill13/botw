@@ -1,5 +1,6 @@
 package com.botw.ui;
 
+import com.botw.BotwPlugin;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -156,7 +157,7 @@ final class Cards
 	static void warn(java.awt.Component parent, String message)
 	{
 		javax.swing.JOptionPane.showMessageDialog(
-			parent, message, "Boss of the Week", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+			parent, message, BotwPlugin.NAME, javax.swing.JOptionPane.INFORMATION_MESSAGE);
 	}
 
 	static JLabel body(String text)

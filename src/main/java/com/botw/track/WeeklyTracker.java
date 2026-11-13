@@ -35,7 +35,7 @@ public class WeeklyTracker
 {
 	private static final long XP_BATCH_MS = 60_000;
 	private static final Pattern COMPLETION = Pattern.compile(
-		"^Your (?:completion count for |completed )?(.+?) (?:(?:kill|completion) )?(?:count )?is: *([0-9,]+)\\.?$",
+		"^Your (?:completion count for |subdued |completed )?(.+?) (?:(?:kill|completion) )?(?:count )?is: *([0-9,]+)\\.?$",
 		Pattern.CASE_INSENSITIVE);
 	private static final Pattern RIFTS = Pattern.compile(
 		"^Amount of Rifts you have closed: ([0-9,]+)\\.$", Pattern.CASE_INSENSITIVE);

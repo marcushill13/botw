@@ -143,7 +143,7 @@ export async function connectDiscord(code, webhookUrl, creatorToken, env, leader
 		const match = /^Discord returned (\d{3})$/.exec(error.message);
 		return match
 			? { status: 400, error: `Discord rejected the webhook (HTTP ${match[1]})` }
-			: { status: 502, error: 'The BOTW service could not reach Discord' };
+			: { status: 502, error: 'The challenge service could not reach Discord' };
 	}
 
 	if (!previous)

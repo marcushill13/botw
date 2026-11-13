@@ -2,6 +2,7 @@ package com.botw.data;
 
 import java.util.Arrays;
 import java.util.Locale;
+import net.runelite.api.gameval.ItemID;
 import net.runelite.api.gameval.VarPlayerID;
 
 /** Activity-specific score units and the loot sources RuneLite reports. */
@@ -31,7 +32,12 @@ public enum MinigameTarget
 		new String[] {"Crystal tool seed", "Zalcano shard", "Uncut onyx", "Smolcano"}, "Smolcano"),
 	TEMPOROSS("Tempoross", "wins", "Count successful Tempoross rounds. Reward permits are separate.",
 		25582, VarPlayerID.TOTAL_TEMPOROSS_KILLS, "Tempoross", new String[] {"Reward pool (Tempoross)", "Casket (Tempoross)"},
-		new String[] {"Fish barrel", "Tackle box", "Big harpoonfish", "Tome of Water (empty)", "Dragon harpoon", "Tiny tempor"}, "Tiny tempor");
+		new String[] {"Fish barrel", "Tackle box", "Big harpoonfish", "Tome of Water (empty)", "Dragon harpoon", "Tiny tempor"}, "Tiny tempor"),
+	WINTERTODT("Wintertodt", "wins", "Count successful Wintertodt rounds. Reward cart searches are separate.",
+		ItemID.PHOENIXPET, VarPlayerID.TOTAL_WINTERTODT_KILLS, "Wintertodt",
+		new String[] {"Reward cart (Wintertodt)", "Supply crate (Wintertodt)"},
+		new String[] {"Phoenix", "Tome of Fire (empty)", "Bruma torch", "Warm gloves",
+			"Pyromancer hood", "Pyromancer garb", "Pyromancer robe", "Pyromancer boots"}, "Phoenix");
 
 	public final String title;
 	public final String unit;

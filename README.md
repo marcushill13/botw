@@ -1,6 +1,6 @@
-# Boss of the Week
+# Challenge of the Week
 
-Run a clan Boss of the Week competition without the admin.
+Run clan boss, raid, skill, clue and minigame competitions without the admin.
 
 Someone sets up a challenge, a boss, a week, and what things are worth, and shares a code. Everyone
 else pastes the code in. From then on the plugin counts kills and drops by itself and keeps a
@@ -46,9 +46,10 @@ first solo or team clears, and award prizes themselves.
 | The Gauntlet / Corrupted Gauntlet | Clears in the selected mode |
 | Zalcano | Kills credited to the player |
 | Tempoross | Successful rounds |
+| Wintertodt | Credited wins; reward cart searches only report prize drops |
 
-Participants join the challenge on the character they play and keep RuneLite open with BOTW
-enabled. Enable RuneLite's Loot Tracker for chest drops and caskets. XP is counted as the plugin
+Participants join the challenge on the character they play and keep RuneLite open with Challenge of the Week
+enabled. Enable RuneLite's Loot Tracker for chest drops, caskets and minigame rewards. XP is counted as the plugin
 sees it in game, not imported from Wise Old Man, so mobile or offline progress needs a creator
 adjustment. The client cannot verify a clan's no-stacking or first-screenshot rules. Loot or a
 named collection log notification can identify a pet; keep screenshots for pets the plugin cannot
@@ -56,7 +57,7 @@ identify by name.
 
 ## Discord hiscores
 
-The creator can add a webhook for a Discord channel in the BOTW plugin settings, open a challenge,
+The creator can add a webhook for a Discord channel in the Challenge of the Week plugin settings, open a challenge,
 and select **Post to Discord**. The service posts an original parchment-style Hiscores image with
 **Rank / Name / Score** (XP, clears, points, or the activity’s count) and edits the same message when ranks or scores change,
 checking about once a minute. The parchment and Discord accent reflect the selected
@@ -68,7 +69,7 @@ is available in RuneLite.
 
 The creator can pin the message in the channel. **Remove Discord** stops updates and removes the
 message. Keep the webhook URL private; anyone with the URL can post to that channel. The plugin sends
-it only to the BOTW service, and participants do not receive it in challenge responses.
+it only to the challenge service, and participants do not receive it in challenge responses.
 
 See [artwork credits and sources](backend/README.md#discord-artwork).
 

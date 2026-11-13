@@ -1,4 +1,4 @@
-# Boss of the Week — the shared service
+# Challenge of the Week — the shared service
 
 A RuneLite plugin only ever sees its own client. A leaderboard across a clan needs somewhere for
 everyone's points to meet, and this is it: create a challenge, join it with a code, report what you
@@ -108,7 +108,8 @@ the test Worker. Create and join challenges with a start time already passed and
 the future. Try a small XP gain, an opened casket of the selected tier, and a clear in each raid mode
 you plan to use. Skill XP is batched for up to a minute; Refresh reads the current scores. For
 Guardians of the Rift, check that completing a round counts and searching the guardian does not
-add another completion. For new minigames, compare one run with the score units listed in the
+add another completion. For Wintertodt, confirm a credited win increases the score by one and
+searching the reward cart leaves it unchanged. For other minigames, compare one run with the score units listed in the
 [main README](../README.md#weekly-events). Try both a rewarded exit and an early teleport in
 Volcanic Mine. Confirm opening a reward chest separately doesn't add a completion, and that
 rummaging 100 Vale offerings adds one roll. Confirm a first prize drop doesn't increase XP or clue

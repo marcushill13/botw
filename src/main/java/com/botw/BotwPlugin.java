@@ -30,12 +30,14 @@ import net.runelite.client.ui.NavigationButton;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Boss of the Week",
-	description = "Track clan boss, raid, skill and clue challenges",
-	tags = {"boss", "clan", "event", "competition", "leaderboard", "drops", "kc"}
+	name = BotwPlugin.NAME,
+	description = "Track clan boss, raid, skill, clue and minigame challenges",
+	tags = {"boss", "clan", "event", "competition", "leaderboard", "drops", "kc", "skill", "minigame"}
 )
 public class BotwPlugin extends Plugin
 {
+	public static final String NAME = "Challenge of the Week";
+
 	@Inject
 	private Client client;
 
@@ -121,7 +123,7 @@ public class BotwPlugin extends Plugin
 		}));
 
 		navigationButton = NavigationButton.builder()
-			.tooltip("Boss of the Week")
+			.tooltip(NAME)
 			.icon(icon())
 			.priority(7)
 			.panel(panel)

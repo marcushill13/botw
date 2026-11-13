@@ -1,5 +1,5 @@
 /**
- * Boss of the Week — the small service the plugins share.
+ * Challenge of the Week — the small service the plugins share.
  *
  * A RuneLite plugin only ever sees its own client, so a leaderboard across a clan needs somewhere for
  * everyone's points to meet. That is all this is: create a challenge, join it with a code, report what

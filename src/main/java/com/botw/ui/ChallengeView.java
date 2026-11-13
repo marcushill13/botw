@@ -1,5 +1,6 @@
 package com.botw.ui;
 
+import com.botw.BotwPlugin;
 import com.botw.data.Challenge;
 import com.botw.data.ChallengeType;
 import com.botw.data.PrizeCandidate;
@@ -456,7 +457,7 @@ public class ChallengeView extends JPanel
 						+ System.lineSeparator()
 						+ "This removes it for everyone who joined, along with every score and every "
 						+ "screenshot. It cannot be undone.",
-					"Boss of the Week",
+					BotwPlugin.NAME,
 					javax.swing.JOptionPane.YES_NO_OPTION);
 
 				if (answer == javax.swing.JOptionPane.YES_OPTION)
@@ -932,7 +933,7 @@ public class ChallengeView extends JPanel
 	private boolean confirmed(String question)
 	{
 		return JOptionPane.showConfirmDialog(
-			this, question, "Boss of the Week", JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
+			this, question, BotwPlugin.NAME, JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION;
 	}
 
 	/**

@@ -150,7 +150,7 @@ test('new minigames use their own leaderboard units and track prizes separately 
 	const app = service();
 	for (const [target, unit] of [
 		['Vale Totems', 'ROLLS'], ['Volcanic Mine', 'RUNS'], ['Hallowed Sepulchre', 'FLOORS'],
-		['The Gauntlet', 'CLEARS'], ['Corrupted Gauntlet', 'CLEARS'], ['Zalcano', 'KILLS'], ['Tempoross', 'WINS']
+		['The Gauntlet', 'CLEARS'], ['Corrupted Gauntlet', 'CLEARS'], ['Zalcano', 'KILLS'], ['Tempoross', 'WINS'], ['Wintertodt', 'WINS']
 	])
 	{
 		const { code } = await app.create(target, 'MINIGAME', {

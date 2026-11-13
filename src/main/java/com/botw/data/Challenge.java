@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * One Boss of the Week challenge, exactly as the service describes it.
+ * One weekly challenge, exactly as the service describes it.
  * <p>
  * A plain class with a no-arg constructor because this is read from JSON, both from the service and
  * from the local copy kept between sessions.

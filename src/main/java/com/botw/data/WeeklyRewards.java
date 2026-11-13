@@ -2,6 +2,7 @@ package com.botw.data;
 
 import java.util.Locale;
 import java.util.Map;
+import net.runelite.api.gameval.ItemID;
 
 /** OSRS item IDs for preset sprites, including items that cannot be traded on the GE. */
 public final class WeeklyRewards
@@ -35,6 +36,7 @@ public final class WeeklyRewards
 		Map.entry("black pickaxe", 12297),
 		Map.entry("bloodhound", 19730),
 		Map.entry("bow string spool", 31052),
+		Map.entry("bruma torch", ItemID.WINT_TORCH),
 		Map.entry("cape of skulls", 23351),
 		Map.entry("climbing boots (g)", 23413),
 		Map.entry("crystal armour seed", 23956),
@@ -82,6 +84,11 @@ public final class WeeklyRewards
 		Map.entry("orion", 34646),
 		Map.entry("osmumten's fang", 26219),
 		Map.entry("pet kraken", 12655),
+		Map.entry("phoenix", ItemID.PHOENIXPET),
+		Map.entry("pyromancer boots", ItemID.PYROMANCER_BOOTS),
+		Map.entry("pyromancer garb", ItemID.PYROMANCER_TOP),
+		Map.entry("pyromancer hood", ItemID.PYROMANCER_HOOD),
+		Map.entry("pyromancer robe", ItemID.PYROMANCER_BOTTOM),
 		Map.entry("ranger boots", 2577),
 		Map.entry("ring of endurance (uncharged)", 24844),
 		Map.entry("ring of nature", 20005),
@@ -98,12 +105,14 @@ public final class WeeklyRewards
 		Map.entry("team cape x", 20214),
 		Map.entry("team cape zero", 20211),
 		Map.entry("tiny tempor", 25602),
+		Map.entry("tome of fire (empty)", ItemID.TOME_OF_FIRE_UNCHARGED),
 		Map.entry("tome of water (empty)", 25576),
 		Map.entry("tumeken's guardian", 27352),
 		Map.entry("tumeken's shadow (uncharged)", 27277),
 		Map.entry("twisted bow", 20997),
 		Map.entry("twisted buckler", 21000),
 		Map.entry("uncut onyx", 6571),
+		Map.entry("warm gloves", ItemID.PYROMANCER_GLOVES),
 		Map.entry("wizard boots", 2579),
 		Map.entry("youngllef", 23757),
 		Map.entry("zalcano shard", 23908),

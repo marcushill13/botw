@@ -133,7 +133,7 @@ public class BotwApi
 			.url(url(baseUrl, "v1", weekly ? "weekly-challenges" : "challenges"))
 			.post(RequestBody.create(JSON, gson.toJson(body))));
 		return weekly && result.isGone()
-			? Result.failed("This server does not support weekly events yet. Check the BOTW server address.")
+			? Result.failed("This server does not support weekly events yet. Check the server address in the plugin settings.")
 			: result;
 	}
 

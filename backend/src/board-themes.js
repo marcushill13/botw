@@ -54,7 +54,8 @@ const MINIGAMES = {
 	'The Gauntlet': 0x367e9d,
 	'Corrupted Gauntlet': 0xb34355,
 	Zalcano: 0x98704a,
-	Tempoross: 0x2e8494
+	Tempoross: 0x2e8494,
+	Wintertodt: 0x4f7797
 };
 
 const BOSSES = {

@@ -1,4 +1,4 @@
--- Boss of the Week storage.
+-- Challenge of the Week storage.
 --
 -- Events are kept individually rather than as a running total per player. It costs a little more
 -- space and buys three things: the "where did my points come from" breakdown the panel shows, an

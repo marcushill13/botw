@@ -1,6 +1,7 @@
 package com.botw.ui;
 
 import com.botw.BotwConfig;
+import com.botw.BotwPlugin;
 import com.botw.data.BossDrops;
 import com.botw.data.Challenge;
 import com.botw.data.ChallengeType;
@@ -303,7 +304,7 @@ public class BotwPanel extends PluginPanel
 		list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
 		list.setBackground(Theme.BACKGROUND);
 
-		JLabel heading = new JLabel("BOSS OF THE WEEK");
+		JLabel heading = new JLabel("<html>CHALLENGE<br>OF THE WEEK</html>");
 		heading.setFont(Theme.title());
 		heading.setForeground(Theme.GOLD);
 		heading.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -775,14 +776,14 @@ public class BotwPanel extends PluginPanel
 		String webhookUrl = config.discordWebhookUrl().trim();
 		if (webhookUrl.isEmpty())
 		{
-			Cards.warn(this, "Paste your Discord channel webhook URL into the BOTW plugin settings first.");
+			Cards.warn(this, "Paste your Discord channel webhook URL into the plugin settings first.");
 			return;
 		}
 
 		int answer = JOptionPane.showConfirmDialog(this,
-			"Post this challenge's hiscores to the channel linked in your BOTW settings?"
+			"Post this challenge's hiscores to the channel linked in your Challenge of the Week settings?"
 				+ System.lineSeparator() + "The same message will update as scores change.",
-			"Boss of the Week", JOptionPane.YES_NO_OPTION);
+			BotwPlugin.NAME, JOptionPane.YES_NO_OPTION);
 		if (answer == JOptionPane.YES_OPTION)
 		{
 			runDiscord(code, "Posting hiscores…",
@@ -795,7 +796,7 @@ public class BotwPanel extends PluginPanel
 	{
 		int answer = JOptionPane.showConfirmDialog(this,
 			"Stop Discord updates and remove this challenge's hiscores message?",
-			"Boss of the Week", JOptionPane.YES_NO_OPTION);
+			BotwPlugin.NAME, JOptionPane.YES_NO_OPTION);
 		if (answer == JOptionPane.YES_OPTION)
 		{
 			runDiscord(code, "Removing Discord hiscores…",
@@ -909,7 +910,7 @@ public class BotwPanel extends PluginPanel
 			"\"" + name + "\" no longer exists on the server." + System.lineSeparator()
 				+ System.lineSeparator()
 				+ "Whoever ran it has deleted it. Remove it from your list?",
-			"Boss of the Week",
+			BotwPlugin.NAME,
 			JOptionPane.YES_NO_OPTION);
 
 		if (answer == JOptionPane.YES_OPTION)

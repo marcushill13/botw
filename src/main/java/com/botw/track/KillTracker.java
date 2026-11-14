@@ -521,7 +521,7 @@ public class KillTracker
 		int id = itemManager.canonicalize(stack.getId());
 		for (DropRule rule : challenge.getDrops())
 		{
-			if (rule.getPoints() == 0 && !rule.isFirstPrize() && !rule.isPurple()) continue;
+			if (!challenge.tracksDrop(rule)) continue;
 			int preset = WeeklyRewards.spriteId(rule);
 			if (rule.getName().equalsIgnoreCase(name) || (preset > 0 && itemManager.canonicalize(preset) == id)
 				|| rewardName(rule.getName()).equals(rewardName(name)))

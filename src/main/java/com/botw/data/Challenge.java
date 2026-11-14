@@ -46,18 +46,32 @@ public class Challenge
 		{
 			case SKILL: return "XP";
 			case CLUE: return "clues";
-			case MINIGAME:
-				MinigameTarget target = MinigameTarget.forName(boss);
-				return target == null ? "completions" : target.unit;
+			case MINIGAME: return drops.stream().anyMatch(rule -> dropPoints(rule) > 0) ? "points" : minigameUnit();
 			case RAID: return raidByPoints ? "points" : "clears";
 			default: return "points";
 		}
 	}
 
+	public String minigameUnit()
+	{
+		MinigameTarget target = MinigameTarget.forName(boss);
+		return target == null ? "completions" : target.unit;
+	}
+
+	public int dropPoints(DropRule rule)
+	{
+		return eventType == ChallengeType.MINIGAME && !rule.isPointsEnabled() ? 0 : rule.getPoints();
+	}
+
+	public boolean tracksDrop(DropRule rule)
+	{
+		return dropPoints(rule) > 0 || rule.isFirstPrize() || rule.isPurple();
+	}
+
 	public boolean matchesDrop(String itemName)
 	{
 		return drops.stream().anyMatch(rule -> rule.getName().equalsIgnoreCase(itemName)
-			&& (rule.getPoints() > 0 || rule.isFirstPrize() || rule.isPurple()));
+			&& tracksDrop(rule));
 	}
 
 	private String creatorRsn = "";
@@ -92,7 +106,7 @@ public class Challenge
 		{
 			if (rule.getName().equalsIgnoreCase(itemName))
 			{
-				return rule.getPoints();
+				return dropPoints(rule);
 			}
 		}
 

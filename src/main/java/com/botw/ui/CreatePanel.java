@@ -60,6 +60,7 @@ public class CreatePanel extends JPanel
 	private final JComboBox<String> weeklyPicker;
 	private final JCheckBox raidByPoints = new JCheckBox("Rank by points");
 	private final Map<String, JSpinner> raidPoints = new LinkedHashMap<>();
+	private final Map<DropRule, JSpinner> minigamePoints = new java.util.IdentityHashMap<>();
 	private final JPanel targetPreview = new JPanel(new BorderLayout());
 	private final JPanel modeList = new JPanel();
 	private final ItemManager itemManager;
@@ -190,7 +191,11 @@ public class CreatePanel extends JPanel
 		form.add(Cards.gap(8));
 
 		form.add(Cards.sectionLabel(type == ChallengeType.BOSS ? "Drops" : "Drops and first prizes"));
-		if (type != ChallengeType.BOSS)
+		if (type == ChallengeType.MINIGAME)
+		{
+			form.add(Cards.muted("First records the first recipient. Points awards the amount for each item. You can tick both."));
+		}
+		else if (type != ChallengeType.BOSS)
 		{
 			form.add(Cards.muted("Tick First to track a prize candidate. Review the evidence before awarding it."));
 		}
@@ -273,7 +278,8 @@ public class CreatePanel extends JPanel
 		drops.clear();
 		for (DropRule rule : challenge.getDrops())
 		{
-			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints(), rule.isFirstPrize(), rule.isPurple()));
+			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints(),
+				rule.isFirstPrize(), rule.isPurple(), rule.isPointsEnabled()));
 		}
 
 		if (type == ChallengeType.BOSS) showChosenBoss();
@@ -500,6 +506,7 @@ public class CreatePanel extends JPanel
 	private void rebuildDropList()
 	{
 		dropList.removeAll();
+		minigamePoints.clear();
 
 		if (drops.isEmpty())
 		{
@@ -542,7 +549,9 @@ public class CreatePanel extends JPanel
 		right.setLayout(new BoxLayout(right, BoxLayout.X_AXIS));
 		right.setBackground(row.getBackground());
 
-		JSpinner points = new JSpinner(new SpinnerNumberModel(rule.getPoints(), 0, 100000, 1));
+		boolean minigame = type == ChallengeType.MINIGAME;
+		JSpinner points = new JSpinner(new SpinnerNumberModel(
+			minigame ? Math.max(1, rule.getPoints()) : rule.getPoints(), minigame ? 1 : 0, 100000, 1));
 		points.setPreferredSize(new Dimension(46, 20));
 		points.setMaximumSize(new Dimension(46, 20));
 		points.addChangeListener(event -> rule.setPoints((Integer) points.getValue()));
@@ -566,7 +575,20 @@ public class CreatePanel extends JPanel
 			JPanel tags = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 0));
 			tags.setBackground(row.getBackground());
 			tags.add(dropTag("First", rule.isFirstPrize(), rule::setFirstPrize));
-			if (type == ChallengeType.RAID)
+			if (minigame)
+			{
+				points.setPreferredSize(new Dimension(58, 20));
+				points.setEnabled(rule.isPointsEnabled());
+				points.getAccessibleContext().setAccessibleName("Points per " + rule.getName());
+				tags.add(dropTag("Points", rule.isPointsEnabled(), enabled ->
+				{
+					rule.setPointsEnabled(enabled);
+					points.setEnabled(enabled);
+				}));
+				tags.add(points);
+				minigamePoints.put(rule, points);
+			}
+			else if (type == ChallengeType.RAID)
 			{
 				tags.add(dropTag("Purple", rule.isPurple(), rule::setPurple));
 			}
@@ -727,6 +749,21 @@ public class CreatePanel extends JPanel
 				return;
 			}
 			challenge.getRaidPoints().put(entry.getKey(), (Integer) entry.getValue().getValue());
+		}
+		for (Map.Entry<DropRule, JSpinner> entry : minigamePoints.entrySet())
+		{
+			DropRule rule = entry.getKey();
+			if (!rule.isPointsEnabled()) continue;
+			try
+			{
+				entry.getValue().commitEdit();
+				rule.setPoints((Integer) entry.getValue().getValue());
+			}
+			catch (java.text.ParseException ex)
+			{
+				Cards.warn(this, "Enter valid points for " + rule.getName() + ".");
+				return;
+			}
 		}
 		challenge.setDrops(new ArrayList<>(drops.values()));
 

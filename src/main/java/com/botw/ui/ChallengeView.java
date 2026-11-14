@@ -504,18 +504,21 @@ public class ChallengeView extends JPanel
 					+ " clue caskets opened wins."));
 				break;
 			case MINIGAME:
-				list.add(Cards.muted("Most rifts closed wins."));
+				list.add(Cards.muted("points".equals(challenge.scoreUnit())
+					? "Each " + minigameCompletion() + " earns 1 point, plus any drop points."
+					: "Ranked by " + challenge.minigameUnit() + "."));
 				break;
 		}
 
 		for (DropRule drop : challenge.getDrops())
 		{
 			boolean scores = (challenge.getEventType() == ChallengeType.BOSS
+				|| challenge.getEventType() == ChallengeType.MINIGAME
 				|| (challenge.getEventType() == ChallengeType.RAID && challenge.isRaidByPoints()))
-				&& drop.getPoints() > 0;
+				&& challenge.dropPoints(drop) > 0;
 			if (!scores && !drop.isFirstPrize() && !drop.isPurple()) continue;
 			list.add(Cards.gap(2));
-			String value = scores ? drop.getPoints() + " pts" : drop.isFirstPrize() ? "First" : "Purple";
+			String value = scores ? challenge.dropPoints(drop) + " pts" : drop.isFirstPrize() ? "First" : "Purple";
 			list.add(row(WeeklyRewards.spriteId(drop), drop.getName(), value, Theme.TEXT));
 		}
 
@@ -686,6 +689,21 @@ public class ChallengeView extends JPanel
 		return NumberFormat.getIntegerInstance(java.util.Locale.ROOT).format(value);
 	}
 
+	private String minigameCompletion()
+	{
+		switch (challenge.minigameUnit())
+		{
+			case "rifts": return "rift closed";
+			case "kills": return "kill";
+			case "wins": return "win";
+			case "clears": return "clear";
+			case "runs": return "run";
+			case "floors": return "floor";
+			case "rolls": return "roll";
+			default: return "completion";
+		}
+	}
+
 	private String activitySummary(LeaderboardEntry entry)
 	{
 		switch (challenge.getEventType())
@@ -693,7 +711,7 @@ public class ChallengeView extends JPanel
 			case SKILL: return format(entry.getLevels()) + " levels gained";
 			case RAID: return format(entry.getKills()) + " clears, " + format(entry.getPurples()) + " purples";
 			case CLUE: return format(entry.getKills()) + " caskets opened";
-			case MINIGAME: return format(entry.getKills()) + " rifts closed";
+			case MINIGAME: return format(entry.getKills()) + " " + challenge.minigameUnit();
 			default: return entry.getKills() + " kills, " + entry.getDrops() + " drops";
 		}
 	}
@@ -965,6 +983,10 @@ public class ChallengeView extends JPanel
 		{
 			card.add(Cards.gap(2));
 			card.add(Cards.muted(you == null ? "Nothing counted yet." : activitySummary(you)));
+			if (you != null && challenge.getEventType() == ChallengeType.MINIGAME && "points".equals(challenge.scoreUnit()))
+			{
+				card.add(Cards.muted("Drop points: " + format((long) points - you.getKills() - you.getAdjustment())));
+			}
 			if (you != null && you.getAdjustment() != 0)
 			{
 				card.add(Cards.muted("Creator adjustment: " + format(you.getAdjustment())));

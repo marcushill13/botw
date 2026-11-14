@@ -18,7 +18,7 @@
  */
 
 import { connectDiscord, removeDiscord, syncDiscordBoards } from './discord.js';
-import { eventPoints, optionsOf, typeOf, validateWeekly, weeklyOptions } from './weekly.js';
+import { eventPoints, minigameDropRules, optionsOf, typeOf, validateWeekly, weeklyOptions } from './weekly.js';
 
 /** Codes people read aloud in Discord, so no O/0 or I/1. */
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -214,7 +214,7 @@ async function createChallenge(request, env)
 			body.timezone ?? 'UTC',
 			body.kcPer,
 			body.kcPoints,
-			JSON.stringify(normaliseDrops(body.drops)),
+			JSON.stringify(normaliseDrops(body.drops, body.eventType)),
 			creatorToken,
 			body.creatorRsn.trim(),
 			now,
@@ -278,6 +278,7 @@ async function updateChallenge(code, request, env)
 		return json({ error: problem }, 400);
 	}
 
+	const drops = normaliseDrops(updatedRules.drops, updatedRules.eventType);
 	await env.DB.prepare(
 		`UPDATE challenges
 		    SET name = ?, boss = ?, starts_at = ?, ends_at = ?, timezone = ?,
@@ -291,7 +292,7 @@ async function updateChallenge(code, request, env)
 			body.timezone ?? challenge.timezone,
 			body.kcPer ?? challenge.kc_per,
 			body.kcPoints ?? challenge.kc_points,
-			JSON.stringify(normaliseDrops(updatedRules.drops)),
+			JSON.stringify(drops),
 			JSON.stringify(weeklyOptions(updatedRules)),
 			code)
 		.run();
@@ -301,6 +302,11 @@ async function updateChallenge(code, request, env)
 	if (typeOf(challenge) === 'BOSS' || typeOf(challenge) === 'RAID')
 	{
 		await recomputePoints(code, env);
+	}
+	else if (typeOf(challenge) === 'MINIGAME'
+		&& !sameMinigameDropPoints(JSON.parse(challenge.drops), drops))
+	{
+		await recomputePoints(code, env, true);
 	}
 
 	const updated = await loadChallenge(code, env);
@@ -769,17 +775,25 @@ async function challengesCreatedBy(rsn, env)
 	return json({ challenges: (rows.results ?? []).map(publicChallenge) });
 }
 
+function sameMinigameDropPoints(before, after)
+{
+	const scores = rules => new Map(minigameDropRules(rules).map(rule => [rule.name.toLowerCase(), rule.points]));
+	const oldScores = scores(before);
+	const newScores = scores(after);
+	return oldScores.size === newScores.size && [...oldScores].every(([name, points]) => newScores.get(name) === points);
+}
+
 /**
  * Rewrites every event's points against the current configuration. Called when the creator edits a
  * challenge, so that what the leaderboard says and what the rules say cannot drift apart.
  */
-async function recomputePoints(code, env)
+async function recomputePoints(code, env, dropsOnly = false)
 {
 	const challenge = await loadChallenge(code, env);
 	const drops = JSON.parse(challenge.drops);
 
 	const rows = await env.DB.prepare(
-		'SELECT id, kind, item_name, amount FROM events WHERE challenge_code = ?')
+		`SELECT id, kind, item_name, amount FROM events WHERE challenge_code = ?${dropsOnly ? " AND kind = 'drop'" : ""}`)
 		.bind(code)
 		.all();
 
@@ -1019,17 +1033,22 @@ function validateChallenge(body)
 	return validateWeekly(body);
 }
 
-function normaliseDrops(drops)
+function normaliseDrops(drops, type)
 {
 	return (drops ?? [])
 		.filter((drop) => drop && String(drop.name ?? '').trim())
-		.map((drop) => ({
-			name: String(drop.name).trim(),
-			itemId: Number.isFinite(drop.itemId) ? drop.itemId : -1,
-			points: Math.min(100000, Math.max(0, Math.trunc(Number(drop.points) || 0))),
-			...(drop.firstPrize === true ? { firstPrize: true } : {}),
-			...(drop.purple === true ? { purple: true } : {})
-		}));
+		.map((drop) => {
+			const pointsEnabled = type === 'MINIGAME' && drop.pointsEnabled === true;
+			return {
+				name: String(drop.name).trim(),
+				itemId: Number.isFinite(drop.itemId) ? drop.itemId : -1,
+				points: type === 'MINIGAME' && !pointsEnabled ? 0
+					: Math.min(100000, Math.max(pointsEnabled ? 1 : 0, Math.trunc(Number(drop.points) || 0))),
+				...(drop.firstPrize === true ? { firstPrize: true } : {}),
+				...(pointsEnabled ? { pointsEnabled: true } : {}),
+				...(drop.purple === true ? { purple: true } : {})
+			};
+		});
 }
 
 /**

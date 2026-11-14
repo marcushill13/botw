@@ -9,11 +9,6 @@ import com.botw.track.KillTracker;
 import com.botw.track.Outbox;
 import com.botw.track.WeeklyTracker;
 import com.google.inject.Provides;
-import java.awt.Color;
-import java.awt.Font;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
-import java.awt.image.BufferedImage;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +22,7 @@ import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.ImageUtil;
 
 @Slf4j
 @PluginDescriptor(
@@ -124,7 +120,7 @@ public class BotwPlugin extends Plugin
 
 		navigationButton = NavigationButton.builder()
 			.tooltip(NAME)
-			.icon(icon())
+			.icon(ImageUtil.loadImageResource(BotwPlugin.class, "sidebar-icon.png"))
 			.priority(7)
 			.panel(panel)
 			.build();
@@ -140,24 +136,6 @@ public class BotwPlugin extends Plugin
 		eventBus.unregister(killTracker);
 		eventBus.unregister(weeklyTracker);
 		clientToolbar.removeNavigation(navigationButton);
-	}
-
-	/**
-	 * The sidebar icon. Drawn rather than shipped as a file so there is one less thing to get wrong in
-	 * the plugin hub's packaging.
-	 */
-	private BufferedImage icon()
-	{
-		BufferedImage image = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-		graphics.setColor(new Color(220, 138, 0));
-		graphics.fillOval(1, 1, 14, 14);
-		graphics.setColor(new Color(40, 40, 40));
-		graphics.setFont(new Font("SansSerif", Font.BOLD, 10));
-		graphics.drawString("B", 5, 12);
-		graphics.dispose();
-		return image;
 	}
 
 	@Subscribe

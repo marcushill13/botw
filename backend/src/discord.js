@@ -203,7 +203,7 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 {
 	const board = await env.DB.prepare(
 		`SELECT b.webhook_url, b.message_id, b.last_state, b.rank_limit,
-		        c.code, c.name, c.boss, c.ends_at, c.event_type, c.event_options
+		        c.code, c.name, c.boss, c.ends_at, c.event_type, c.event_options, c.drops
 		   FROM discord_boards b JOIN challenges c ON c.code = b.challenge_code
 		  WHERE b.challenge_code = ?`)
 		.bind(code).first();

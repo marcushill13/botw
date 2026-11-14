@@ -29,7 +29,7 @@ dates, creator controls, evidence and Discord leaderboard controls.
 | Raid | Most clears or editable points per mode and per drop | Clears, clears by difficulty, purples, first recorded clear and first drop candidates |
 | Skill | XP gained in one selected skill | Levels gained and optional first drop candidates |
 | Clue | Opened caskets of one selected tier | Five editable first prize presets per tier, including Ranger boots for Medium |
-| Minigame | Completions for the chosen activity | Optional first prize candidates from its reward table |
+| Minigame | Completions, plus points for any drops marked **Points** | Optional first prize candidates from its reward table |
 
 Raid presets cover Chambers of Xeric, Theatre of Blood, Tombs of Amascut and The Fractured Archive.
 Points mode starts at one point per clear and zero per item. Set the actual values for your clan
@@ -47,6 +47,11 @@ first solo or team clears, and award prizes themselves.
 | Zalcano | Kills credited to the player |
 | Tempoross | Successful rounds |
 | Wintertodt | Credited wins; reward cart searches only report prize drops |
+
+For each minigame drop, select **First** to record the first recipient, **Points** to award
+points for every item received, or both. Each completion still contributes one point to the
+total. If no drop awards points, the leaderboard continues to show the activity's usual unit.
+Changing a drop's points recalculates drops the plugin has already recorded.
 
 Participants join the challenge on the character they play and keep RuneLite open with Challenge of the Week
 enabled. Enable RuneLite's Loot Tracker for chest drops, caskets and minigame rewards. XP is counted as the plugin

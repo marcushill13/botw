@@ -23,9 +23,15 @@ public class DropRule
 	private int points;
 	private boolean firstPrize;
 	private boolean purple;
+	private boolean pointsEnabled;
 
 	public DropRule(String name, int itemId, int points)
 	{
 		this(name, itemId, points, false, false);
+	}
+
+	public DropRule(String name, int itemId, int points, boolean firstPrize, boolean purple)
+	{
+		this(name, itemId, points, firstPrize, purple, false);
 	}
 }

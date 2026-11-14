@@ -58,6 +58,11 @@ export function weeklyOptions(body)
 		? { raidByPoints: body.raidByPoints === true, raidPoints: body.raidPoints ?? {} } : {};
 }
 
+export function minigameDropRules(drops)
+{
+	return drops.filter(rule => rule.pointsEnabled === true && rule.points > 0);
+}
+
 /** Null means this event does not belong on the challenge. */
 export function eventPoints(event, challenge, drops)
 {
@@ -83,6 +88,11 @@ export function eventPoints(event, challenge, drops)
 		{
 			const rule = drops.find(row => row.name.toLowerCase() === name.toLowerCase());
 			if (!rule || amount > 2147483647) return null;
+			if (type === 'MINIGAME')
+			{
+				if (rule.pointsEnabled === true && rule.points > 0) return rule.points * amount;
+				return rule.firstPrize ? 0 : null;
+			}
 			if (type === 'BOSS' || (type === 'RAID' && optionsOf(challenge).raidByPoints))
 			{
 				return rule.points * amount;
@@ -101,7 +111,11 @@ export function presentation(challenge)
 		case 'RAID': return { title: 'RAID OF THE WEEK', target: 'Raid', score: optionsOf(challenge).raidByPoints ? 'POINTS' : 'CLEARS' };
 		case 'SKILL': return { title: 'SKILL OF THE WEEK', target: 'Skill', score: 'XP' };
 		case 'CLUE': return { title: 'CLUE OF THE WEEK', target: 'Tier', score: 'CLUES' };
-		case 'MINIGAME': return { title: 'MINIGAME OF THE WEEK', target: 'Minigame', score: Object.hasOwn(MINIGAME_UNITS, challenge.boss) ? MINIGAME_UNITS[challenge.boss] : 'CLEARS' };
+		case 'MINIGAME': {
+			const unit = Object.hasOwn(MINIGAME_UNITS, challenge.boss) ? MINIGAME_UNITS[challenge.boss] : 'CLEARS';
+			const scoresDrops = minigameDropRules(JSON.parse(challenge.drops ?? '[]')).length > 0;
+			return { title: 'MINIGAME OF THE WEEK', target: 'Minigame', score: scoresDrops ? 'POINTS' : unit };
+		}
 		default: return { title: 'BOSS OF THE WEEK', target: 'Boss', score: 'POINTS' };
 	}
 }

@@ -166,3 +166,48 @@ test('new minigames use their own leaderboard units and track prizes separately 
 		assert.equal(presentation({ event_type: 'MINIGAME', boss: challenge.boss }).score, unit);
 	}
 });
+
+test('minigame first prizes and per-item points work independently and can be rescored', async () =>
+{
+	const app = service();
+	const rules = [
+		{ name: 'Phoenix', firstPrize: true, points: 99 },
+		{ name: 'Warm gloves', pointsEnabled: true, points: 5 },
+		{ name: 'Bruma torch', firstPrize: true, pointsEnabled: true, points: 3 },
+		{ name: 'Pyromancer hood', points: 20 }
+	];
+	const { code, creatorToken } = await app.create('Wintertodt', 'MINIGAME', { drops: rules });
+	const send = await app.player(code, 'Competitor');
+	const win = app.event('winter-win', 'kc', 2);
+	const gloves = app.event('winter-gloves', 'drop', 2, 'warm gloves');
+	const first = app.event('winter-first', 'drop', 1, 'Phoenix');
+	const both = app.event('winter-both', 'drop', 1, 'Bruma torch');
+	const disabled = app.event('winter-disabled', 'drop', 1, 'Pyromancer hood');
+	assert.equal((await send([win, gloves, first, both, disabled])).accepted, 4);
+	await send([gloves]);
+
+	const expectBoard = async (points, scoreUnit, prizes) =>
+	{
+		const { challenge, leaderboard } = await app.board(code);
+		assert.equal(leaderboard[0].points, points);
+		assert.equal(leaderboard[0].kills, 2);
+		assert.deepEqual(challenge.prizeCandidates.map(p => p.itemName).sort(), prizes);
+		const display = { boss: challenge.boss, event_type: challenge.eventType, drops: JSON.stringify(challenge.drops) };
+		assert.equal(JSON.parse(hiscores(display, leaderboard).state).display.score, scoreUnit);
+		return challenge;
+	};
+
+	const challenge = await expectBoard(15, 'POINTS', ['Bruma torch', 'Phoenix']);
+	assert.equal(challenge.drops.find(drop => drop.name === 'Warm gloves').pointsEnabled, true);
+	assert.equal(challenge.drops.find(drop => drop.name === 'Phoenix').points, 0);
+
+	const editDrops = async drops =>
+	{
+		const result = await app.request('PATCH', '/' + code, { drops }, { 'X-Creator-Token': creatorToken });
+		assert.equal(result.status, 200);
+	};
+	await editDrops(rules.map(rule => rule.name === 'Warm gloves' ? { ...rule, points: 10 } : rule));
+	await expectBoard(25, 'POINTS', ['Bruma torch', 'Phoenix']);
+	await editDrops(rules.map(rule => ({ ...rule, pointsEnabled: false })));
+	await expectBoard(2, 'WINS', ['Bruma torch', 'Phoenix']);
+});

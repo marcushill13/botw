@@ -39,6 +39,7 @@ public class Challenge
 	private boolean raidByPoints;
 	private Map<String, Integer> raidPoints = new LinkedHashMap<>();
 	private List<PrizeCandidate> prizeCandidates = new ArrayList<>();
+	private Map<String, String> firstPrizeOverrides = new LinkedHashMap<>();
 
 	public String scoreUnit()
 	{

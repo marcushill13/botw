@@ -4,8 +4,7 @@ Run clan boss, raid, skill, clue and minigame competitions without the admin.
 
 Someone sets up a challenge, a boss, a week, and what things are worth, and shares a code. Everyone
 else pastes the code in. From then on the plugin counts kills and drops by itself and keeps a
-leaderboard everyone can see. No screenshots to send, no spreadsheet to maintain, no password to
-remember.
+leaderboard everyone can see. Mobile players can use Hiscores tracking and submit screenshots for drops.
 
 ## Setting one up
 
@@ -53,10 +52,8 @@ points for every item received, or both. Each completion still contributes one p
 total. If no drop awards points, the leaderboard continues to show the activity's usual unit.
 Changing a drop's points recalculates drops the plugin has already recorded.
 
-Participants join the challenge on the character they play and keep RuneLite open with Challenge of the Week
-enabled. Enable RuneLite's Loot Tracker for chest drops, caskets and minigame rewards. XP is counted as the plugin
-sees it in game, not imported from Wise Old Man, so mobile or offline progress needs a creator
-adjustment. The client cannot verify a clan's no-stacking or first-screenshot rules. Loot or a
+RuneLite participants join the challenge on the character they play and keep RuneLite open with Challenge of the Week
+enabled. Enable RuneLite's Loot Tracker for chest drops, caskets and minigame rewards. RuneLite mode counts XP as the plugin sees it in game. Mobile mode instead checks the official OSRS Hiscores every 10 minutes. The client cannot verify a clan's no-stacking or first-screenshot rules. Loot or a
 named collection log notification can identify a pet; keep screenshots for pets the plugin cannot
 identify by name.
 
@@ -83,14 +80,47 @@ to try it with a separate Worker and database before changing the live service.
 
 ## Players who cannot run the plugin
 
-Mobile has no plugins, so those kills can never be counted. They do not have to sit the competition
-out: the creator can add someone to the leaderboard by hand and set their points from the screenshots
-they send in, the way the clan already does it. Those rows are marked *Manual / Mobile*, so a total
-that was typed in is never passed off as one that was counted.
+Players can join once in RuneLite and tick **Mobile player**. The service saves their starting
+Hiscores stats and checks again every **10 minutes**, even when RuneLite is closed. Gains count on
+the same plugin and Discord leaderboard. This uses the official OSRS Hiscores, without a WOM account.
 
-The same edit works on everyone else, for docking points or fixing a mistake. A tracked player's own
-kills keep counting underneath it — the change is kept alongside their score rather than replacing
-it, so it does not come undone at their next kill.
+| Activity | Mobile progress |
+| --- | --- |
+| Skill | XP and levels gained |
+| Boss | KC converted using the event's kill point rules |
+| Clue | Hiscores count for the selected difficulty |
+| Raid | Recorded Normal / Challenge / Hard / Expert completions and configured mode points |
+| GOTR | Rifts closed |
+| Tempoross / Wintertodt | Credited wins, never reward pulls |
+| Gauntlet / Corrupted Gauntlet / Zalcano | Recorded completions |
+
+Entry raids, Vale Totems, Volcanic Mine and Hallowed Sepulchre have no supported Hiscores counter.
+An unavailable counter (`-1`) is never treated as zero: players need a valid starting counter.
+If an additional raid mode becomes visible later, its tracking starts from that first visible value.
+
+**Log out or hop worlds** to publish progress to Hiscores, particularly before the start and end.
+A future event takes a fresh baseline on its first check at or after the start; a late join starts
+from joining. Progress between the start and a delayed first check may be missed. The service keeps
+the last snapshot collected before the end and never imports later progress, so a final short gap
+can also need a creator correction. Hiscores cannot prove exactly when each kill happened.
+Clue Hiscores do not verify when a casket was opened or whether a player followed no-stacking rules.
+Checks may be delayed by outages or a busy queue; the last successful score stays in place.
+
+Mobile mode is chosen on first joining and stays fixed for that challenge, including desktop sessions.
+RuneLite reports are ignored for that entry to avoid double counting. Rejoining keeps the original
+baseline. The target and dates cannot change once mobile tracking is in use; scoring rules can still
+be corrected and applied to the recorded gains.
+
+**Drops and first prizes:** mobile players send screenshots to clan staff. The creator uses **Edit
+points** for drop points and **Edit firsts** in the First prize candidates section for winners' names.
+Each first prize can use **Automatic**, **Manual winner**, or **Unclaimed**. Manual claims stay in
+place when tracked drops arrive; selecting Automatic restores the earliest recorded result. Editing
+first prizes does not award points. Raid first clear and first purple can also be entered manually.
+These first-prize results are shown in RuneLite; the Discord image remains the score leaderboard.
+
+Players who cannot join through RuneLite at all can still be added by the creator and scored
+manually from screenshots. Existing manual entries keep working. The creator's point corrections
+are stored alongside tracked progress, so later updates do not erase them.
 
 ## What you see
 
@@ -118,12 +148,14 @@ RuneLite plugin only ever sees its own client, so there is no way to do that loc
 
 **Sent when you join a challenge, and only for challenges you have joined:**
 
-- your RuneScape name, so the leaderboard has something to call you
+- your RuneScape name and mobile-mode choice, so the leaderboard has something to call you
 - each kill of that challenge's boss, and any of its drops that the challenge counts
 - a screenshot of each scoring drop, if you leave that setting on
 
 **Not sent:** anything about accounts, anything from challenges you have not joined, anything at all
 before you join one, and any kill of any other monster.
+
+**Mobile mode.** The service sends your RuneScape name to the official OSRS Hiscores and saves challenge-specific starting and current counters. Checks stop when the event ends or your entry is removed.
 
 **Screenshots.** A scoring drop is photographed and saved on your own machine, under
 `.runelite/botw/screenshots`, in a folder named after the challenge. A downscaled copy is sent to

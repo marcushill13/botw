@@ -128,3 +128,39 @@ for each asset and the [Jagex Fan Content Policy](https://legal.jagex.com/docs/p
 The Worker reads only bundled sprites, with no outbound image requests. To update the catalogue,
 edit the source list and run `python3 scripts/pack-board-art.py` with Pillow installed. Bump
 `BOARD_STYLE` if the bundled artwork changes so active Discord messages pick it up.
+
+## Test mobile tracking and manual first prizes
+
+This update requires additive migration `005-mobile-and-firsts.sql`. It is safe to run again and
+preserves existing events, scores and Discord message IDs. Apply it before deploying the Worker.
+From `backend` in PowerShell, with your separate test database and test Worker configured:
+
+```powershell
+npx wrangler d1 execute botw-discord-test --remote --config .\wrangler.test.toml --file .\migrations\005-mobile-and-firsts.sql
+if ($LASTEXITCODE -ne 0) { throw "Migration failed; stop before deployment" }
+npx wrangler deploy --config .\wrangler.test.toml
+if ($LASTEXITCODE -ne 0) { throw "Test deployment failed" }
+```
+
+For a new database, initialise it with `schema.sql` instead. Do not apply schema migrations to the
+production database while testing. Restart the development RuneLite client after rebuilding, and
+set its **Server address** to your test Worker URL.
+
+1. Create an active Tempoross test challenge. Hop worlds, then join on a fresh character entry
+   with **Mobile player** ticked. Your starting total should give zero event wins.
+2. Complete a win on mobile, log out or hop, and wait 10 minutes plus up to a minute for the cron.
+   Check the wins and the Discord leaderboard. Closing RuneLite must not stop the updates.
+3. Rejoin or play in RuneLite: the same baseline stays in place and wins are not counted twice.
+4. Use **Edit points** to add screenshot-backed drop points. Another Hiscores refresh must preserve
+   that adjustment while adding subsequent wins.
+5. Under **First prize candidates**, use **Edit firsts** to enter a winner, mark a prize Unclaimed,
+   and restore Automatic. These edits must not change anyone's points.
+
+The existing minute cron runs a bounded queue of up to 20 due mobile entries per minute before
+Discord sync. Each successful entry is scheduled 10 minutes ahead, with a final check near the
+end of the event. Large queues and Hiscores failures may delay checks. Requests have a 12-second
+timeout and use only the fixed official OSRS endpoint. Counters are matched by name rather than
+changing array positions. Missing counters and decreases never award a lifetime total or reset an
+existing score. No post-deadline snapshot is imported. See the main README for boundary limitations.
+
+Automated checks: `node --test backend/test/*.test.mjs` and `gradlew test`.

@@ -60,6 +60,8 @@ public class ChallengeStore
 		@SerializedName("participantToken")
 		public String participantToken;
 
+		public boolean mobilePlayer;
+
 		public boolean isCreator()
 		{
 			return creatorToken != null && !creatorToken.isEmpty();
@@ -132,7 +134,7 @@ public class ChallengeStore
 		List<Challenge> joined = new ArrayList<>();
 		for (Membership membership : memberships)
 		{
-			if (membership.isParticipant())
+			if (membership.isParticipant() && !membership.mobilePlayer)
 			{
 				joined.add(membership.challenge);
 			}
@@ -182,6 +184,16 @@ public class ChallengeStore
 		}
 
 		save();
+	}
+
+	public synchronized void setMobile(String code, boolean mobile)
+	{
+		Membership membership = find(code);
+		if (membership != null && membership.mobilePlayer != mobile)
+		{
+			membership.mobilePlayer = mobile;
+			save();
+		}
 	}
 
 	public synchronized void remove(String code)

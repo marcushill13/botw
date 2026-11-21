@@ -71,8 +71,7 @@ CREATE TABLE IF NOT EXISTS participants (
 	-- and so is entirely this, and a tracked player given a bonus keeps counting kills underneath it.
 	adjustment     INTEGER NOT NULL DEFAULT 0,
 
-	-- Added by the creator rather than having joined from a plugin — a mobile player, whose kills
-	-- nobody can see. Shown on the leaderboard, because a total that arrived by hand should not be
+	-- Added by the creator rather than having joined from a plugin — a participant scored from screenshots. Shown on the leaderboard, because a total that arrived by hand should not be
 	-- passed off as one that was counted.
 	--
 	-- Cleared if they ever do join properly, which happens by itself when they enter the code.
@@ -158,3 +157,25 @@ CREATE TABLE IF NOT EXISTS shots (
 );
 
 CREATE INDEX IF NOT EXISTS shots_by_challenge ON shots (challenge_code, rsn);
+-- Additive and safe to run again. Existing participants, events and Discord posts stay in place.
+CREATE TABLE IF NOT EXISTS mobile_tracking (
+    challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
+    rsn TEXT NOT NULL,
+    baseline TEXT,
+    latest TEXT,
+    last_checked INTEGER,
+    next_check INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'Waiting for the challenge to start.',
+    PRIMARY KEY (challenge_code, rsn),
+    FOREIGN KEY (challenge_code, rsn) REFERENCES participants(challenge_code, rsn) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS mobile_tracking_due ON mobile_tracking(next_check);
+
+-- An empty winner explicitly marks a prize unclaimed; deleting the override restores auto tracking.
+CREATE TABLE IF NOT EXISTS first_prize_overrides (
+    challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
+    prize_key TEXT NOT NULL,
+    rsn TEXT NOT NULL,
+    updated_at INTEGER NOT NULL,
+    PRIMARY KEY (challenge_code, prize_key)
+);

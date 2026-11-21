@@ -14,6 +14,8 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
+import com.google.gson.JsonNull;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Value;
@@ -146,12 +148,28 @@ public class BotwApi
 
 	public Result<Snapshot> join(String baseUrl, String code, String rsn)
 	{
+		return join(baseUrl, code, rsn, false);
+	}
+
+	public Result<Snapshot> join(String baseUrl, String code, String rsn, boolean mobile)
+	{
 		JsonObject body = new JsonObject();
 		body.addProperty("rsn", rsn);
-
-		return send(new Request.Builder()
-			.url(url(baseUrl, "v1", "challenges", code, "join"))
+		Result<Snapshot> result = send(new Request.Builder()
+			.url(url(baseUrl, "v1", "challenges", code, mobile ? "mobile-join" : "join"))
 			.post(RequestBody.create(JSON, gson.toJson(body))));
+		return mobile && result.isGone()
+			? Result.failed("This server does not support mobile tracking yet. Check your server address and deploy the mobile update.") : result;
+	}
+
+	public Result<Snapshot> setFirsts(String baseUrl, String code, String creatorToken, Map<String, String> winners)
+	{
+		JsonObject values = new JsonObject();
+		winners.forEach((key, winner) -> values.add(key, winner == null ? JsonNull.INSTANCE : new com.google.gson.JsonPrimitive(winner)));
+		JsonObject body = new JsonObject();
+		body.add("winners", values);
+		return send(new Request.Builder().url(url(baseUrl, "v1", "challenges", code, "firsts"))
+			.put(RequestBody.create(JSON, body.toString())).header("X-Creator-Token", creatorToken));
 	}
 
 	public Result<Snapshot> update(String baseUrl, Challenge challenge, String creatorToken)
@@ -224,13 +242,7 @@ public class BotwApi
 		}
 	}
 
-	/**
-	 * Puts someone on the leaderboard who will never report anything themselves.
-	 * <p>
-	 * A mobile player cannot run a plugin, so their kills cannot be counted. The clan handles them the
-	 * way it always has — screenshots, and a number entered by staff — and this is where that number
-	 * goes, so they appear on the same board as everyone else.
-	 */
+	/** Adds a player whose score the creator will enter from screenshots. */
 	public Result<Snapshot> addParticipant(
 		String baseUrl, String code, String creatorToken, String rsn, int points)
 	{

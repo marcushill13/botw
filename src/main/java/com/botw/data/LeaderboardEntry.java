@@ -26,6 +26,9 @@ public class LeaderboardEntry
 	 * as one that was counted.
 	 */
 	private boolean manual;
+	private boolean mobilePlayer;
+	private Long mobileLastChecked;
+	private String mobileStatus;
 
 	/** What the creator has added or taken away by hand. Zero for almost everyone. */
 	private int adjustment;

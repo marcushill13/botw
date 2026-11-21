@@ -11,4 +11,5 @@ public class PrizeCandidate
 	private String category;
 	private String rsn;
 	private long occurredAt;
+	private boolean manual;
 }

@@ -23,6 +23,7 @@ import java.util.function.IntConsumer;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
+import javax.swing.JScrollPane;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -42,15 +43,7 @@ public class ChallengeView extends JPanel
 {
 	private static final int MAX_DISCORD_RANKS = 25;
 
-	/**
-	 * What the creator may do to the leaderboard by hand. Null for everyone else, which is what makes
-	 * the controls appear only for them.
-	 * <p>
-	 * This exists because some of a clan plays on mobile, where no plugin can run and no kill can ever
-	 * be counted. Those players do what they have always done — send screenshots — and staff put the
-	 * number in, so they end up on the same board as everyone else rather than in a spreadsheet
-	 * alongside it.
-	 */
+	/** Creator controls for screenshot claims and score corrections. */
 	public interface LeaderboardEditor
 	{
 		void add(String rsn, int points);
@@ -63,6 +56,8 @@ public class ChallengeView extends JPanel
 		void setPoints(Map<String, Integer> changes);
 
 		void remove(String rsn);
+
+		default void setFirsts(Map<String, String> winners) { }
 	}
 
 	private final ItemManager itemManager;
@@ -628,7 +623,13 @@ public class ChallengeView extends JPanel
 		{
 			prizeHolder.add(Cards.gap(10));
 			prizeHolder.add(Cards.sectionLabel("First prize candidates"));
-			prizeHolder.add(Cards.muted("Earliest recorded results. Confirm screenshots and claims before awarding."));
+			prizeHolder.add(Cards.muted("Confirm screenshots before awarding. Creators can enter mobile claims or correct tracked results."));
+			if (editor != null)
+			{
+				JButton editFirsts = Cards.button("Edit firsts");
+				editFirsts.addActionListener(event -> editFirsts());
+				prizeHolder.add(editFirsts);
+			}
 			if (challenge.getEventType() == ChallengeType.RAID)
 			{
 				String firstClear = "Not yet recorded";
@@ -637,15 +638,21 @@ public class ChallengeView extends JPanel
 				{
 					if ("clear".equals(candidate.getCategory()))
 					{
-						firstClear = candidate.getRsn() + " (" + candidate.getItemName() + ")";
+						firstClear = prizeName(candidate);
 					}
 				}
 				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
 				{
-					if (!"clear".equals(candidate.getCategory()) && challenge.getDrops().stream()
+					if ("purple".equals(candidate.getCategory()))
+					{
+						firstPurple = prizeName(candidate);
+						break;
+					}
+					if (!challenge.getFirstPrizeOverrides().containsKey("purple")
+						&& !"clear".equals(candidate.getCategory()) && challenge.getDrops().stream()
 						.anyMatch(drop -> drop.isPurple() && drop.getName().equalsIgnoreCase(candidate.getItemName())))
 					{
-						firstPurple = candidate.getRsn() + " (" + candidate.getItemName() + ")";
+						firstPurple = prizeName(candidate);
 						break;
 					}
 				}
@@ -660,7 +667,7 @@ public class ChallengeView extends JPanel
 				{
 					if (!"clear".equals(candidate.getCategory()) && rule.getName().equalsIgnoreCase(candidate.getItemName()))
 					{
-						holder = candidate.getRsn();
+						holder = candidate.getRsn().isEmpty() ? "Unclaimed" : candidate.getRsn() + (candidate.isManual() ? " (manual)" : "");
 						break;
 					}
 				}
@@ -669,6 +676,67 @@ public class ChallengeView extends JPanel
 		}
 		prizeHolder.revalidate();
 		prizeHolder.repaint();
+	}
+
+	private String prizeName(PrizeCandidate candidate)
+	{
+		if (candidate.getRsn().isEmpty()) return "Unclaimed";
+		return candidate.getRsn() + (candidate.isManual() ? " (manual)" : " (" + candidate.getItemName() + ")");
+	}
+
+	private void editFirsts()
+	{
+		Map<String, String> prizes = new LinkedHashMap<>();
+		if (challenge.getEventType() == ChallengeType.RAID)
+		{
+			prizes.put("clear", "First clear");
+			prizes.put("purple", "First purple");
+		}
+		for (DropRule rule : challenge.getDrops())
+			if (rule.isFirstPrize()) prizes.put("drop:" + rule.getName().toLowerCase(java.util.Locale.ROOT), rule.getName());
+		JPanel form = new JPanel();
+		form.setLayout(new BoxLayout(form, BoxLayout.Y_AXIS));
+		form.setBackground(Theme.BACKGROUND);
+		form.add(Cards.muted("Enter the winner after checking their screenshot. This changes first prizes only; use Edit points for drop points."));
+		Map<String, JComboBox<String>> modes = new LinkedHashMap<>();
+		Map<String, JTextField> fields = new LinkedHashMap<>();
+		for (Map.Entry<String, String> prize : prizes.entrySet())
+		{
+			String key = prize.getKey();
+			form.add(Cards.gap(8));
+			form.add(Cards.body(prize.getValue()));
+			JComboBox<String> mode = new JComboBox<>(new String[] { "Automatic", "Manual winner", "Unclaimed" });
+			mode.setMaximumSize(new Dimension(Integer.MAX_VALUE, 26));
+			mode.setAlignmentX(Component.LEFT_ALIGNMENT);
+			String current = challenge.getFirstPrizeOverrides().get(key);
+			mode.setSelectedIndex(current == null ? 0 : current.isEmpty() ? 2 : 1);
+			JTextField name = Theme.textField(new JTextField(current == null ? "" : current));
+			name.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+			name.setAlignmentX(Component.LEFT_ALIGNMENT);
+			name.setEnabled(mode.getSelectedIndex() == 1);
+			mode.addActionListener(event -> name.setEnabled(mode.getSelectedIndex() == 1));
+			form.add(mode);
+			form.add(name);
+			modes.put(key, mode);
+			fields.put(key, name);
+		}
+		JScrollPane scroll = new JScrollPane(form);
+		scroll.setPreferredSize(new Dimension(310, Math.min(440, 85 * prizes.size() + 90)));
+		if (JOptionPane.showConfirmDialog(this, scroll, "Edit first prizes", JOptionPane.OK_CANCEL_OPTION,
+			JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) return;
+		Map<String, String> winners = new LinkedHashMap<>();
+		for (String key : prizes.keySet())
+		{
+			int mode = modes.get(key).getSelectedIndex();
+			String name = fields.get(key).getText().trim();
+			if (mode == 1 && !name.matches("[A-Za-z0-9 _-]{1,12}"))
+			{
+				Cards.warn(this, "Enter a valid RuneScape name for " + prizes.get(key) + ".");
+				return;
+			}
+			winners.put(key, mode == 0 ? null : mode == 2 ? "" : name);
+		}
+		editor.setFirsts(winners);
 	}
 
 	private int rankValue(LeaderboardEntry entry)
@@ -742,7 +810,12 @@ public class ChallengeView extends JPanel
 		name.setAlignmentX(Component.LEFT_ALIGNMENT);
 		text.add(name);
 
-		if (entry.isManual())
+		if (entry.isMobilePlayer())
+		{
+			text.add(Cards.mutedInRow("Mobile · 10 min checks"));
+			text.add(Cards.mutedInRow(activitySummary(entry)));
+		}
+		else if (entry.isManual())
 		{
 			// Said plainly on the row. These points were typed in by staff from a screenshot, and a
 			// leaderboard that hid that would be claiming to have counted something it never saw.
@@ -978,6 +1051,17 @@ public class ChallengeView extends JPanel
 		total.setForeground(Theme.GOLD);
 		total.setAlignmentX(Component.LEFT_ALIGNMENT);
 		card.add(total);
+		if (you != null && you.isMobilePlayer())
+		{
+			card.add(Cards.muted("Mobile · Hiscores checked every 10 minutes."));
+			card.add(Cards.muted(you.getMobileLastChecked() == null ? "Waiting for a starting snapshot."
+				: "Last check: " + java.time.Instant.ofEpochMilli(you.getMobileLastChecked()).atZone(java.time.ZoneId.systemDefault())
+					.format(java.time.format.DateTimeFormatter.ofPattern("d MMM HH:mm"))));
+			if (challenge.getEndsAt() < System.currentTimeMillis())
+				card.add(Cards.muted("Finished. Last snapshot kept; ask the creator to correct any missing progress."));
+			else card.add(Cards.muted(you.getMobileStatus() == null ? "" : you.getMobileStatus()));
+			card.add(Cards.muted("Drops need screenshot submissions. First prizes and drop points are entered by the creator."));
+		}
 
 		if (challenge.getEventType() != ChallengeType.BOSS)
 		{

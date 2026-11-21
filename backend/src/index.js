@@ -17,6 +17,7 @@
  * every score be recomputed when the creator inevitably fixes a points value mid-week.
  */
 
+import { fetchMobileSnapshot, mobileSupport, mobileTotals, nextMobileCheck, syncMobilePlayers } from './mobile.js';
 import { connectDiscord, removeDiscord, syncDiscordBoards } from './discord.js';
 import { eventPoints, minigameDropRules, optionsOf, typeOf, validateWeekly, weeklyOptions } from './weekly.js';
 
@@ -65,7 +66,10 @@ export default {
 			{
 				ctx.waitUntil(pruneShots(env));
 			}
-			ctx.waitUntil(syncDiscordBoards(env, leaderboardFor));
+			ctx.waitUntil((async () => {
+				await syncMobilePlayers(env, refreshTotals);
+				await syncDiscordBoards(env, leaderboardFor);
+			})());
 		}
 	},
 
@@ -128,6 +132,18 @@ async function route(request, env)
 		const result = await removeDiscord(discord[1].toUpperCase(),
 			request.headers.get('X-Creator-Token'), env);
 		return withCors(json(result.error ? { error: result.error } : { enabled: false }, result.status));
+	}
+
+	const firsts = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/firsts$/);
+	if (firsts && request.method === 'PUT')
+	{
+		return withCors(await setFirsts(firsts[1].toUpperCase(), request, env));
+	}
+
+	const mobileJoin = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/mobile-join$/);
+	if (mobileJoin && request.method === 'POST')
+	{
+		return withCors(await joinChallenge(mobileJoin[1].toUpperCase(), request, env, true));
 	}
 
 	const join = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/join$/);
@@ -245,7 +261,8 @@ async function readChallenge(code, env)
 	return json({
 		challenge: {
 			...publicChallenge(challenge),
-			prizeCandidates: await prizeCandidates(challenge, env)
+			prizeCandidates: await prizeCandidates(challenge, env),
+			firstPrizeOverrides: await firstOverrides(challenge.code, env)
 		},
 		leaderboard: await leaderboardFor(code, env),
 		discordRankLimit: challenge.discord_rank_limit
@@ -272,6 +289,10 @@ async function updateChallenge(code, request, env)
 	{
 		return json({ error: 'The event type and target cannot be changed after creation' }, 400);
 	}
+	const mobileEntry = await env.DB.prepare('SELECT rsn FROM mobile_tracking WHERE challenge_code = ? LIMIT 1').bind(code).first();
+	if (mobileEntry && (updatedRules.boss !== challenge.boss || updatedRules.startsAt !== challenge.starts_at
+		|| updatedRules.endsAt !== challenge.ends_at))
+		return json({ error: 'The target and dates cannot change after a mobile player joins. Create a new challenge instead.' }, 409);
 	const problem = validateChallenge(updatedRules);
 	if (problem)
 	{
@@ -341,6 +362,8 @@ async function deleteChallenge(code, request, env)
 	await env.DB.batch([
 		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM events WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM mobile_tracking WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM first_prize_overrides WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM challenges WHERE code = ?').bind(code)
 	]);
@@ -348,7 +371,7 @@ async function deleteChallenge(code, request, env)
 	return json({ deleted: true });
 }
 
-async function joinChallenge(code, request, env)
+async function joinChallenge(code, request, env, mobile = false)
 {
 	const challenge = await loadChallenge(code, env);
 	if (!challenge)
@@ -357,25 +380,53 @@ async function joinChallenge(code, request, env)
 	}
 
 	const body = await readJson(request);
-	const rsn = (body.rsn ?? '').trim();
-	if (!rsn)
+	const rsn = String(body?.rsn ?? '').replace(/\u00a0/g, ' ').trim();
+	if (!/^[A-Za-z0-9 _-]{1,12}$/.test(rsn))
 	{
-		return json({ error: 'A name is required to join' }, 400);
+		return json({ error: 'Enter a valid RuneScape name (1–12 characters)' }, 400);
 	}
 
 	const existing = await env.DB.prepare(
-		'SELECT token, manual FROM participants WHERE challenge_code = ? AND rsn = ?')
+		`SELECT p.token, p.manual, p.rsn, m.rsn AS mobile_rsn FROM participants p
+		 LEFT JOIN mobile_tracking m ON m.challenge_code = p.challenge_code AND m.rsn = p.rsn
+		 WHERE p.challenge_code = ? AND p.rsn = ? COLLATE NOCASE`)
 		.bind(code, rsn)
 		.first();
+
+	if (mobile && existing && !existing.mobile_rsn)
+	{
+		return json({ error: 'This entry already uses RuneLite or manual scoring. Mobile mode must be chosen when first joining, to avoid counting progress twice.' }, 409);
+	}
+	let snapshot = null;
+	if (mobile && !existing)
+	{
+		const problem = mobileSupport(challenge);
+		if (problem) return json({ error: problem }, 400);
+		if (Date.now() >= challenge.ends_at) return json({ error: 'This challenge has finished' }, 400);
+		try { snapshot = await fetchMobileSnapshot(challenge, rsn); }
+		catch (error) { return json({ error: error.message }, 503); }
+	}
 
 	// Rejoining is not an error. People reinstall, hop accounts, and join twice by accident.
 	const token = existing ? existing.token : randomToken();
 	if (!existing)
 	{
-		await env.DB.prepare(
+		const now = Date.now();
+		if (mobile && now >= challenge.ends_at) return json({ error: 'This challenge has finished' }, 400);
+		const statements = [env.DB.prepare(
 			'INSERT INTO participants (challenge_code, rsn, token, joined_at) VALUES (?, ?, ?, ?)')
-			.bind(code, rsn, token, Date.now())
-			.run();
+			.bind(code, rsn, token, now)];
+		if (mobile)
+		{
+			const active = now >= challenge.starts_at;
+			statements.push(env.DB.prepare(
+				`INSERT INTO mobile_tracking (challenge_code, rsn, baseline, latest, last_checked, next_check, status)
+				 VALUES (?, ?, ?, ?, ?, ?, ?)`)
+				.bind(code, rsn, active ? JSON.stringify(snapshot) : null, active ? JSON.stringify(snapshot) : null,
+					active ? now : null, active ? nextMobileCheck(challenge, now) : challenge.starts_at,
+					active ? 'Starting Hiscores saved. Checks every 10 minutes.' : 'Waiting for the challenge to start.'));
+		}
+		await env.DB.batch(statements);
 	}
 	else if (existing.manual === 1)
 	{
@@ -385,11 +436,12 @@ async function joinChallenge(code, request, env)
 		// adjustment, because those points were for kills that happened and were never tracked.
 		await env.DB.prepare(
 			'UPDATE participants SET manual = 0 WHERE challenge_code = ? AND rsn = ?')
-			.bind(code, rsn)
+			.bind(code, existing.rsn)
 			.run();
 	}
 
 	return json({
+		mobilePlayer: Boolean(mobile || existing?.mobile_rsn),
 		participantToken: token,
 		challenge: publicChallenge(challenge),
 		leaderboard: await leaderboardFor(code, env)
@@ -406,7 +458,9 @@ async function submitEvents(code, request, env)
 
 	const token = request.headers.get('X-Participant-Token');
 	const participant = await env.DB.prepare(
-		'SELECT rsn FROM participants WHERE challenge_code = ? AND token = ?')
+		`SELECT p.rsn, m.rsn AS mobile_rsn FROM participants p
+		 LEFT JOIN mobile_tracking m ON m.challenge_code = p.challenge_code AND m.rsn = p.rsn
+		 WHERE p.challenge_code = ? AND p.token = ?`)
 		.bind(code, token)
 		.first();
 
@@ -414,6 +468,8 @@ async function submitEvents(code, request, env)
 	{
 		return json({ error: 'Join the challenge before sending anything' }, 403);
 	}
+
+	if (participant.mobile_rsn) return json({ accepted: 0 });
 
 	const body = await readJson(request);
 	const submitted = Array.isArray(body?.events) ? body.events : [];
@@ -591,18 +647,7 @@ async function readShot(code, eventId, request, env)
 	return json(row);
 }
 
-/**
- * Adds someone the plugin will never hear from.
- *
- * A mobile player cannot run a RuneLite plugin, so their kills cannot be counted and never will be.
- * The clan's answer is the one it already had — they send screenshots and staff enter the number —
- * and this is where that number goes, so those players appear on the same leaderboard as everyone
- * else instead of on a spreadsheet beside it.
- *
- * They get a token like anyone else, which is simply never handed out. It costs nothing, keeps the
- * row the same shape as a real participant's, and means that if they ever do join from a desktop the
- * ordinary join path finds them and takes them over.
- */
+/** Adds a participant for manual scoring from screenshots. */
 async function addParticipant(code, request, env)
 {
 	const challenge = await loadChallenge(code, env);
@@ -722,6 +767,7 @@ async function removeParticipant(code, rsn, request, env)
 	await env.DB.batch([
 		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
 		env.DB.prepare('DELETE FROM events WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
+		env.DB.prepare('DELETE FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
 		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ? AND rsn = ?').bind(code, rsn)
 	]);
 
@@ -832,16 +878,17 @@ async function recomputePoints(code, env, dropsOnly = false)
 async function leaderboardFor(code, env)
 {
 	const rows = await env.DB.prepare(
-		`SELECT rsn, points, kills, drops, adjustment, manual, levels, purples, raid_modes
-		   FROM participants
-		  WHERE challenge_code = ?
-		  ORDER BY points DESC, kills DESC, rsn ASC`)
+		`SELECT p.rsn, p.points, p.kills, p.drops, p.adjustment, p.manual, p.levels, p.purples, p.raid_modes,
+		        m.rsn IS NOT NULL AS mobilePlayer, m.last_checked AS mobileLastChecked, m.status AS mobileStatus
+		   FROM participants p LEFT JOIN mobile_tracking m ON m.challenge_code = p.challenge_code AND m.rsn = p.rsn
+		  WHERE p.challenge_code = ?
+		  ORDER BY p.points DESC, p.kills DESC, p.rsn ASC`)
 		.bind(code)
 		.all();
 
 	// SQLite has no booleans, and the plugin should not have to know that.
 	return (rows.results ?? []).map(({ raid_modes, ...row }) => ({
-		...row, manual: row.manual === 1, raidModes: JSON.parse(raid_modes ?? '{}')
+		...row, mobilePlayer: row.mobilePlayer === 1, manual: row.manual === 1, raidModes: JSON.parse(raid_modes ?? '{}')
 	}));
 }
 
@@ -851,7 +898,15 @@ async function leaderboardFor(code, env)
  */
 async function refreshTotals(code, rsn, env, challenge = null)
 {
-	const totals = await eventTotals(code, rsn, env, challenge);
+	const rules = challenge ?? await loadChallenge(code, env);
+	const totals = await eventTotals(code, rsn, env, rules);
+	const mobile = await env.DB.prepare('SELECT baseline, latest FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?')
+		.bind(code, rsn).first();
+	const external = mobileTotals(rules, mobile);
+	totals.points += external.points;
+	totals.kills += external.kills;
+	totals.levels += external.levels;
+	for (const [mode, count] of Object.entries(external.raidModes)) totals.raidModes[mode] = (totals.raidModes[mode] ?? 0) + count;
 	await env.DB.prepare(
 		`UPDATE participants
 		    SET points = ? + adjustment, kills = ?, drops = ?, levels = ?, purples = ?, raid_modes = ?
@@ -894,6 +949,66 @@ async function eventTotals(code, rsn, env, challenge)
 	return { ...totals, points: countPoints + totals.eventPoints, purples, raidModes };
 }
 
+function firstKeys(challenge)
+{
+	return new Set([
+		...(typeOf(challenge) === 'RAID' ? ['clear', 'purple'] : []),
+		...JSON.parse(challenge.drops).filter(rule => rule.firstPrize).map(rule => 'drop:' + rule.name.toLowerCase())
+	]);
+}
+
+async function firstOverrides(code, env)
+{
+	const rows = await env.DB.prepare('SELECT prize_key, rsn FROM first_prize_overrides WHERE challenge_code = ?')
+		.bind(code).all();
+	return Object.fromEntries((rows.results ?? []).map(row => [row.prize_key, row.rsn]));
+}
+
+async function setFirsts(code, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge) return json({ error: 'No challenge with that code' }, 404);
+	if (request.headers.get('X-Creator-Token') !== challenge.creator_token)
+		return json({ error: 'Only the creator can edit first prizes' }, 403);
+	const body = await readJson(request);
+	if (!body?.winners || typeof body.winners !== 'object' || Array.isArray(body.winners))
+		return json({ error: 'First prize winners are required' }, 400);
+	const allowed = firstKeys(challenge);
+	const statements = [];
+	for (const [key, value] of Object.entries(body.winners))
+	{
+		if (!allowed.has(key)) return json({ error: 'Choose a first prize from this challenge' }, 400);
+		if (value === null)
+		{
+			statements.push(env.DB.prepare('DELETE FROM first_prize_overrides WHERE challenge_code = ? AND prize_key = ?').bind(code, key));
+			continue;
+		}
+		if (typeof value !== 'string' || (value.trim() && !/^[A-Za-z0-9 _-]{1,12}$/.test(value.trim())))
+			return json({ error: 'Winner names must be valid RuneScape names (up to 12 characters)' }, 400);
+		statements.push(env.DB.prepare(
+			`INSERT INTO first_prize_overrides (challenge_code, prize_key, rsn, updated_at) VALUES (?, ?, ?, ?)
+			 ON CONFLICT(challenge_code, prize_key) DO UPDATE SET rsn = excluded.rsn, updated_at = excluded.updated_at`)
+			.bind(code, key, value.trim(), Date.now()));
+	}
+	if (statements.length) await env.DB.batch(statements);
+	return readChallenge(code, env);
+}
+
+async function applyFirstOverrides(challenge, candidates, env)
+{
+	const overrides = await firstOverrides(challenge.code, env);
+	let result = candidates;
+	for (const [key, rsn] of Object.entries(overrides))
+	{
+		if (!firstKeys(challenge).has(key)) continue;
+		result = result.filter(row => key.startsWith('drop:')
+			? ('drop:' + row.itemName.toLowerCase() !== key || row.category === 'clear') : row.category !== key);
+		result.push({ category: key.startsWith('drop:') ? 'drop' : key,
+			itemName: key.startsWith('drop:') ? key.slice(5) : 'Manual claim', rsn, occurredAt: 0, manual: true });
+	}
+	return result;
+}
+
 async function prizeCandidates(challenge, env)
 {
 	const rules = JSON.parse(challenge.drops).filter(rule => rule.firstPrize);
@@ -906,7 +1021,7 @@ async function prizeCandidates(challenge, env)
 			  ORDER BY occurred_at, recorded_at, id LIMIT 1`).bind(challenge.code).first();
 		if (clear) candidates.push(clear);
 	}
-	if (!rules.length) return candidates;
+	if (!rules.length) return applyFirstOverrides(challenge, candidates, env);
 	const rows = await env.DB.prepare(
 		`WITH prizes AS (
 		  SELECT item_name AS itemName, rsn, occurred_at AS occurredAt,
@@ -919,7 +1034,7 @@ async function prizeCandidates(challenge, env)
 		)
 		SELECT itemName, rsn, occurredAt FROM prizes WHERE position = 1 ORDER BY occurredAt`)
 		.bind(challenge.code, JSON.stringify(rules.map(rule => rule.name))).all();
-	return candidates.concat(rows.results ?? []);
+	return applyFirstOverrides(challenge, candidates.concat(rows.results ?? []), env);
 }
 
 /**

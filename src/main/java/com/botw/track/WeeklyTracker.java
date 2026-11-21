@@ -191,9 +191,10 @@ public class WeeklyTracker
 
 		long now = System.currentTimeMillis();
 		List<PendingEvent> recorded = new ArrayList<>();
-		for (Challenge challenge : challenges.joined())
+		for (Challenge challenge : challenges.joinedForClaims())
 		{
 			if (!challenge.isRunning(now)) continue;
+			if (challenges.isMobile(challenge.getCode()) && challenge.getEventType() != ChallengeType.RAID) continue;
 			if (completion && challenge.getEventType() == ChallengeType.RAID)
 			{
 				String mode = WeeklyTargets.raidMode(challenge.getBoss(), raid.group(1));

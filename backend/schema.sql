@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS events (
 	challenge_code TEXT NOT NULL REFERENCES challenges(code) ON DELETE CASCADE,
 	rsn            TEXT NOT NULL,
 
-	-- 'kc', 'drop', 'raid', 'xp', or 'level'.
+	-- 'kc', 'drop', 'raid', 'xp', 'level', or unscored mobile 'claim_drop' / 'claim_raid'.
 	kind           TEXT NOT NULL,
 
 	-- Drop name, raid mode or skill name. Null for a count event.

@@ -151,6 +151,10 @@ set its **Server address** to your test Worker URL.
 2. Complete a win on mobile, log out or hop, and wait 10 minutes plus up to a minute for the cron.
    Check the wins and the Discord leaderboard. Closing RuneLite must not stop the updates.
 3. Rejoin or play in RuneLite: the same baseline stays in place and wins are not counted twice.
+   Try rejoining with Mobile player unticked, then ticked: scoring must stay on Hiscores.
+   For an easy first-prize test, add a common activity drop (such as a fish you receive from Tempoross)
+   to the event with First ticked and Points off. Obtain it in RuneLite; its first recipient and
+   screenshot should appear without adding points. Leave RuneLite Loot Tracker enabled.
 4. Use **Edit points** to add screenshot-backed drop points. Another Hiscores refresh must preserve
    that adjustment while adding subsequent wins.
 5. Under **First prize candidates**, use **Edit firsts** to enter a winner, mark a prize Unclaimed,

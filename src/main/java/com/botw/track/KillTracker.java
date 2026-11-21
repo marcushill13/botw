@@ -221,7 +221,7 @@ public class KillTracker
 
 		List<PendingEvent> recorded = new ArrayList<>();
 
-		for (Challenge challenge : challenges.joined())
+		for (Challenge challenge : challenges.joinedForClaims())
 		{
 			Long killed = lastKillAt.get(challenge.getCode());
 
@@ -298,7 +298,7 @@ public class KillTracker
 
 		// One kill can matter to more than one challenge at a time, and the player should not have to
 		// choose. Each joined challenge is considered on its own.
-		for (Challenge challenge : challenges.joined())
+		for (Challenge challenge : challenges.joinedForClaims())
 		{
 			if (!challenge.isRunning(now)
 				|| (challenge.getEventType() != ChallengeType.BOSS && !WeeklyTargets.tracksWorld(client)))
@@ -335,7 +335,7 @@ public class KillTracker
 			}
 			if (petSource) lastKillAt.put(challenge.getCode(), now);
 
-			for (int remaining = completions; remaining > 0; remaining -= 1000)
+			for (int remaining = challenges.isMobile(challenge.getCode()) ? 0 : completions; remaining > 0; remaining -= 1000)
 			{
 				recorded.add(PendingEvent.kills(challenge.getCode(), Math.min(1000, remaining), now));
 			}
@@ -385,7 +385,7 @@ public class KillTracker
 		}
 
 		String pet = bossDrops.petIn(challenge);
-		if (pet == null)
+		if (pet == null || !observesDrop(challenge, pet))
 		{
 			// A challenge that scores no pet, or lists two and cannot say which. Neither is an error:
 			// the creator sets what counts, and a pet they left off is a pet they did not want.
@@ -407,9 +407,9 @@ public class KillTracker
 	{
 		long now = System.currentTimeMillis();
 		List<PendingEvent> recorded = new ArrayList<>();
-		for (Challenge challenge : challenges.joined())
+		for (Challenge challenge : challenges.joinedForClaims())
 		{
-			if (challenge.isRunning(now) && challenge.counts(item) && isNamedPet(challenge, item)
+			if (challenge.isRunning(now) && challenge.counts(item) && observesDrop(challenge, item) && isNamedPet(challenge, item)
 				&& petNoticeMatchesActivity(challenge) && newPetNotice(challenge, item, now))
 			{
 				recorded.add(scoringDrop(challenge, item, 1, now));
@@ -454,6 +454,13 @@ public class KillTracker
 			case CLUE: return "Master".equals(challenge.getBoss()) && item.equalsIgnoreCase("Bloodhound");
 			default: return false;
 		}
+	}
+
+	private boolean observesDrop(Challenge challenge, String item)
+	{
+		return !challenges.isMobile(challenge.getCode()) || challenge.getDrops().stream()
+			.anyMatch(rule -> rule.getName().equalsIgnoreCase(item)
+				&& (rule.isFirstPrize() || (challenge.getEventType() == ChallengeType.RAID && rule.isPurple())));
 	}
 
 	private PendingEvent scoringDrop(Challenge challenge, String itemName, int quantity, long occurredAt)
@@ -521,7 +528,7 @@ public class KillTracker
 		int id = itemManager.canonicalize(stack.getId());
 		for (DropRule rule : challenge.getDrops())
 		{
-			if (!challenge.tracksDrop(rule)) continue;
+			if (!challenge.tracksDrop(rule) || !observesDrop(challenge, rule.getName())) continue;
 			int preset = WeeklyRewards.spriteId(rule);
 			if (rule.getName().equalsIgnoreCase(name) || (preset > 0 && itemManager.canonicalize(preset) == id)
 				|| rewardName(rule.getName()).equals(rewardName(name)))

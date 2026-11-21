@@ -107,8 +107,10 @@ Clue Hiscores do not verify when a casket was opened or whether a player followe
 Checks may be delayed by outages or a busy queue; the last successful score stays in place.
 
 Mobile mode is chosen on first joining and stays fixed for that challenge, including desktop sessions.
-RuneLite reports are ignored for that entry to avoid double counting. Rejoining keeps the original
-baseline. The target and dates cannot change once mobile tracking is in use; scoring rules can still
+RuneLite KC/XP reports are ignored for that entry to avoid double counting. RuneLite still records
+first-prize drops, raid first clears, first purples and screenshots as unscored claims. Even a drop
+marked Points awards no automatic points in mobile mode; staff use Edit points after checking evidence. Rejoining keeps the original
+baseline, even if Mobile player is unticked and then ticked again. The target and dates cannot change once mobile tracking is in use; scoring rules can still
 be corrected and applied to the recorded gains.
 
 **Drops and first prizes:** mobile players send screenshots to clan staff. The creator uses **Edit

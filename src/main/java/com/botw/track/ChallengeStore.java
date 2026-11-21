@@ -143,6 +143,23 @@ public class ChallengeStore
 		return joined;
 	}
 
+	/** Drops and raid firsts can still be observed for players using Hiscores scoring. */
+	public synchronized List<Challenge> joinedForClaims()
+	{
+		List<Challenge> joined = new ArrayList<>();
+		for (Membership membership : memberships)
+		{
+			if (membership.isParticipant()) joined.add(membership.challenge);
+		}
+		return joined;
+	}
+
+	public synchronized boolean isMobile(String code)
+	{
+		Membership membership = find(code);
+		return membership != null && membership.mobilePlayer;
+	}
+
 	@Nullable
 	public synchronized Membership find(String code)
 	{

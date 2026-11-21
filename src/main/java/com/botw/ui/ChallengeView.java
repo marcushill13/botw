@@ -665,7 +665,8 @@ public class ChallengeView extends JPanel
 				String holder = "Unclaimed";
 				for (PrizeCandidate candidate : challenge.getPrizeCandidates())
 				{
-					if (!"clear".equals(candidate.getCategory()) && rule.getName().equalsIgnoreCase(candidate.getItemName()))
+					if (!"clear".equals(candidate.getCategory()) && !"purple".equals(candidate.getCategory())
+						&& rule.getName().equalsIgnoreCase(candidate.getItemName()))
 					{
 						holder = candidate.getRsn().isEmpty() ? "Unclaimed" : candidate.getRsn() + (candidate.isManual() ? " (manual)" : "");
 						break;
@@ -1060,7 +1061,7 @@ public class ChallengeView extends JPanel
 			if (challenge.getEndsAt() < System.currentTimeMillis())
 				card.add(Cards.muted("Finished. Last snapshot kept; ask the creator to correct any missing progress."));
 			else card.add(Cards.muted(you.getMobileStatus() == null ? "" : you.getMobileStatus()));
-			card.add(Cards.muted("Drops need screenshot submissions. First prizes and drop points are entered by the creator."));
+			card.add(Cards.muted("Hiscores scoring stays on for this event. RuneLite still records firsts and screenshots. Submit mobile screenshots to the creator for firsts and drop points."));
 		}
 
 		if (challenge.getEventType() != ChallengeType.BOSS)

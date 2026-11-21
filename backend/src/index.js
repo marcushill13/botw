@@ -469,7 +469,6 @@ async function submitEvents(code, request, env)
 		return json({ error: 'Join the challenge before sending anything' }, 403);
 	}
 
-	if (participant.mobile_rsn) return json({ accepted: 0 });
 
 	const body = await readJson(request);
 	const submitted = Array.isArray(body?.events) ? body.events : [];
@@ -502,7 +501,18 @@ async function submitEvents(code, request, env)
 			continue;
 		}
 
-		const points = eventPoints(event, challenge, drops);
+		let kind = event.kind;
+		let points = eventPoints(event, challenge, drops);
+		if (participant.mobile_rsn)
+		{
+			// Hiscores owns all progress and points. RuneLite supplies only evidence of firsts.
+			const rule = drops.find(rule => rule.name.toLowerCase() === String(event.itemName ?? '').toLowerCase());
+			if (kind === 'drop' && points !== null
+				&& rule && (rule.firstPrize || (typeOf(challenge) === 'RAID' && rule.purple))) kind = 'claim_drop';
+			else if (kind === 'raid' && points !== null) kind = 'claim_raid';
+			else continue;
+			points = 0;
+		}
 		if (points === null)
 		{
 			continue;
@@ -516,7 +526,7 @@ async function submitEvents(code, request, env)
 				event.id,
 				code,
 				participant.rsn,
-				event.kind,
+				kind,
 				event.kind === 'kc' ? null : String(event.itemName ?? ''),
 				event.amount,
 				points,
@@ -527,7 +537,7 @@ async function submitEvents(code, request, env)
 	if (statements.length > 0)
 	{
 		await env.DB.batch(statements);
-		if (typeOf(challenge) !== 'SKILL') await refreshTotals(code, participant.rsn, env, challenge);
+		if (typeOf(challenge) !== 'SKILL' || participant.mobile_rsn) await refreshTotals(code, participant.rsn, env, challenge);
 	}
 
 	if (typeOf(challenge) !== 'BOSS')
@@ -922,7 +932,7 @@ async function eventTotals(code, rsn, env, challenge)
 		`SELECT COALESCE(SUM(CASE WHEN kind IN ('kc', 'raid') THEN amount ELSE 0 END), 0) AS kills,
 		        COALESCE(SUM(CASE WHEN kind = 'kc' THEN amount ELSE 0 END), 0) AS kc,
 		        COALESCE(SUM(points), 0) AS eventPoints,
-		        COALESCE(SUM(CASE WHEN kind = 'drop' THEN 1 ELSE 0 END), 0) AS drops,
+		        COALESCE(SUM(CASE WHEN kind IN ('drop', 'claim_drop') THEN 1 ELSE 0 END), 0) AS drops,
 		        COALESCE(SUM(CASE WHEN kind = 'level' THEN amount ELSE 0 END), 0) AS levels
 		   FROM events WHERE challenge_code = ? AND rsn = ?`)
 		.bind(code, rsn).first();
@@ -935,7 +945,7 @@ async function eventTotals(code, rsn, env, challenge)
 			.map(rule => rule.name.toLowerCase()));
 		const rows = await env.DB.prepare(
 			`SELECT kind, item_name, SUM(amount) AS amount FROM events
-			  WHERE challenge_code = ? AND rsn = ? AND kind IN ('raid', 'drop')
+			  WHERE challenge_code = ? AND rsn = ? AND kind IN ('raid', 'drop', 'claim_drop')
 			  GROUP BY kind, item_name`).bind(code, rsn).all();
 		for (const row of rows.results ?? [])
 		{
@@ -1002,7 +1012,7 @@ async function applyFirstOverrides(challenge, candidates, env)
 	{
 		if (!firstKeys(challenge).has(key)) continue;
 		result = result.filter(row => key.startsWith('drop:')
-			? ('drop:' + row.itemName.toLowerCase() !== key || row.category === 'clear') : row.category !== key);
+			? ('drop:' + row.itemName.toLowerCase() !== key || ['clear', 'purple'].includes(row.category)) : row.category !== key);
 		result.push({ category: key.startsWith('drop:') ? 'drop' : key,
 			itemName: key.startsWith('drop:') ? key.slice(5) : 'Manual claim', rsn, occurredAt: 0, manual: true });
 	}
@@ -1017,9 +1027,20 @@ async function prizeCandidates(challenge, env)
 	{
 		const clear = await env.DB.prepare(
 			`SELECT 'clear' AS category, item_name AS itemName, rsn, occurred_at AS occurredAt
-			   FROM events WHERE challenge_code = ? AND kind = 'raid'
+			   FROM events WHERE challenge_code = ? AND kind IN ('raid', 'claim_raid')
 			  ORDER BY occurred_at, recorded_at, id LIMIT 1`).bind(challenge.code).first();
 		if (clear) candidates.push(clear);
+	}
+	if (typeOf(challenge) === 'RAID')
+	{
+		const purples = JSON.parse(challenge.drops).filter(rule => rule.purple).map(rule => rule.name);
+		const purple = await env.DB.prepare(
+			`SELECT 'purple' AS category, item_name AS itemName, rsn, occurred_at AS occurredAt
+			 FROM events WHERE challenge_code = ? AND kind IN ('drop', 'claim_drop')
+			 AND item_name COLLATE NOCASE IN (SELECT value FROM json_each(?))
+			 ORDER BY occurred_at, recorded_at, id LIMIT 1`)
+			.bind(challenge.code, JSON.stringify(purples)).first();
+		if (purple) candidates.push(purple);
 	}
 	if (!rules.length) return applyFirstOverrides(challenge, candidates, env);
 	const rows = await env.DB.prepare(
@@ -1029,7 +1050,7 @@ async function prizeCandidates(challenge, env)
 		           PARTITION BY item_name COLLATE NOCASE
 		           ORDER BY occurred_at, recorded_at, id
 		         ) AS position
-		    FROM events WHERE challenge_code = ? AND kind = 'drop'
+		    FROM events WHERE challenge_code = ? AND kind IN ('drop', 'claim_drop')
 		     AND item_name COLLATE NOCASE IN (SELECT value FROM json_each(?))
 		)
 		SELECT itemName, rsn, occurredAt FROM prizes WHERE position = 1 ORDER BY occurredAt`)

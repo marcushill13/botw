@@ -220,3 +220,83 @@ test('migration is repeatable and keeps existing scores and Discord message IDs'
 	assert.equal(a.db.prepare('SELECT points FROM participants').get().points, 75);
 	assert.equal(a.db.prepare('SELECT message_id FROM discord_boards').get().message_id, 'original');
 });
+
+
+test('mobile RuneLite firsts and evidence never award points, including after rescoring and rejoining', async () =>
+{
+	const a = app();
+	const rules = [
+		{ name: 'Tiny tempor', firstPrize: true, pointsEnabled: true, points: 50 },
+		{ name: 'Tome of water (empty)', pointsEnabled: true, points: 5 }
+	];
+	const { code, creatorToken } = await a.create('MINIGAME', 'Tempoross', { drops: rules });
+	const join = await a.join(code, stats('Tempoross', 150));
+	const headers = { 'X-Participant-Token': join.participantToken };
+	const send = events => a.request('POST', '/' + code + '/events', { events }, headers);
+	const pet = { id: 'mobile-live-pet', kind: 'drop', itemName: 'Tiny tempor', amount: 1, occurredAt: a.now };
+	const result = await send([pet,
+		{ id: 'mobile-live-wins', kind: 'kc', amount: 3, occurredAt: a.now },
+		{ id: 'mobile-nonfirst-drop', kind: 'drop', itemName: 'Tome of water (empty)', amount: 1, occurredAt: a.now },
+		{ id: 'mobile-forged-claim', kind: 'claim_drop', itemName: 'Tiny tempor', amount: 1, occurredAt: a.now }
+	]);
+	assert.equal(result.accepted, 1);
+	await send([pet]);
+	const shot = await a.request('POST', '/' + code + '/shots', {
+		eventId: pet.id, itemName: pet.itemName, occurredAt: a.now, image: 'screenshot-test'
+	}, headers);
+	assert.equal(shot.status, 200);
+	assert.equal(a.db.prepare('SELECT kind, points FROM events').get().kind, 'claim_drop');
+	assert.equal(a.db.prepare('SELECT COUNT(*) AS count FROM events').get().count, 1);
+	assert.equal(a.db.prepare('SELECT COUNT(*) AS count FROM shots').get().count, 1);
+	let board = await a.board(code);
+	assert.equal(board.challenge.prizeCandidates[0].rsn, 'Mobile');
+	assert.equal(board.leaderboard[0].points, 0);
+	assert.equal(board.leaderboard[0].kills, 0);
+	await a.tick(stats('Tempoross', 153), a.now + MOBILE_INTERVAL + 1000);
+	assert.equal((await a.board(code)).leaderboard[0].points, 3);
+	// Unticking by rejoining, then ticking again, must keep the token and original 150 baseline.
+	for (const suffix of ['join', 'mobile-join'])
+	{
+		const rejoin = await a.request('POST', '/' + code + '/' + suffix, { rsn: 'Mobile' });
+		assert.equal(rejoin.participantToken, join.participantToken);
+		assert.equal(rejoin.mobilePlayer, true);
+	}
+	await a.request('PATCH', '/' + code, { drops: rules.map(rule => ({ ...rule, points: 100 })) },
+		{ 'X-Creator-Token': creatorToken });
+	await a.tick(stats('Tempoross', 154), a.now + MOBILE_INTERVAL * 2 + 2000);
+	board = await a.board(code);
+	assert.equal(board.leaderboard[0].points, 4);
+	assert.equal(board.challenge.prizeCandidates[0].rsn, 'Mobile');
+	assert.equal(a.db.prepare('SELECT points FROM events').get().points, 0);
+});
+
+test('mobile raid first clear and first purple are unscored and survive rule changes', async () =>
+{
+	const a = app();
+	const drops = [{ name: 'Lightbearer', purple: true, points: 20 }];
+	const { code, creatorToken } = await a.create('RAID', 'Tombs of Amascut', {
+		drops, raidByPoints: true, raidPoints: { Normal: 2, Expert: 5 }
+	});
+	const initial = { skills: [], activities: [{ name: 'Tombs of Amascut', score: 100 },
+		{ name: 'Tombs of Amascut: Expert Mode', score: 20 }] };
+	const join = await a.join(code, initial);
+	await a.request('POST', '/' + code + '/events', { events: [
+		{ id: 'mobile-clear', kind: 'raid', itemName: 'Expert', amount: 1, occurredAt: a.now },
+		{ id: 'mobile-purple', kind: 'drop', itemName: 'Lightbearer', amount: 1, occurredAt: a.now }
+	] }, { 'X-Participant-Token': join.participantToken });
+	let board = await a.board(code);
+	assert.equal(board.challenge.prizeCandidates.find(p => p.category === 'clear').rsn, 'Mobile');
+	assert.equal(board.challenge.prizeCandidates.find(p => p.category === 'purple').rsn, 'Mobile');
+	assert.equal(board.leaderboard[0].points, 0);
+	assert.equal(board.leaderboard[0].kills, 0);
+	assert.equal(board.leaderboard[0].purples, 1);
+	await a.tick({ skills: [], activities: [{ name: 'Tombs of Amascut', score: 100 },
+		{ name: 'Tombs of Amascut: Expert Mode', score: 21 }] }, a.now + MOBILE_INTERVAL + 1000);
+	assert.equal((await a.board(code)).leaderboard[0].points, 5);
+	await a.request('PATCH', '/' + code, { drops: [{ ...drops[0], points: 100 }], raidByPoints: false },
+		{ 'X-Creator-Token': creatorToken });
+	board = await a.board(code);
+	assert.equal(board.leaderboard[0].points, 1);
+	assert.equal(board.leaderboard[0].kills, 1);
+	assert.equal(board.challenge.prizeCandidates.find(p => p.category === 'purple').rsn, 'Mobile');
+});

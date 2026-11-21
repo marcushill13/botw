@@ -140,6 +140,12 @@ async function route(request, env)
 		return withCors(await setFirsts(firsts[1].toUpperCase(), request, env));
 	}
 
+	const mobileSwitch = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/mobile$/);
+	if (mobileSwitch && request.method === 'PUT')
+	{
+		return withCors(await switchToMobile(mobileSwitch[1].toUpperCase(), request, env));
+	}
+
 	const mobileJoin = path.match(/^\/v1\/challenges\/([A-Za-z0-9]+)\/mobile-join$/);
 	if (mobileJoin && request.method === 'POST')
 	{
@@ -362,6 +368,7 @@ async function deleteChallenge(code, request, env)
 	await env.DB.batch([
 		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM events WHERE challenge_code = ?').bind(code),
+		env.DB.prepare('DELETE FROM mobile_handovers WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM mobile_tracking WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM first_prize_overrides WHERE challenge_code = ?').bind(code),
 		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ?').bind(code),
@@ -395,7 +402,7 @@ async function joinChallenge(code, request, env, mobile = false)
 
 	if (mobile && existing && !existing.mobile_rsn)
 	{
-		return json({ error: 'This entry already uses RuneLite or manual scoring. Mobile mode must be chosen when first joining, to avoid counting progress twice.' }, 409);
+		return json({ error: 'You have already joined. Open the challenge and use Switch to mobile tracking to keep your existing score.' }, 409);
 	}
 	let snapshot = null;
 	if (mobile && !existing)
@@ -448,6 +455,57 @@ async function joinChallenge(code, request, env, mobile = false)
 	});
 }
 
+async function switchToMobile(code, request, env)
+{
+	const challenge = await loadChallenge(code, env);
+	if (!challenge) return json({ error: 'No challenge with that code' }, 404);
+	const participant = await env.DB.prepare(
+		`SELECT p.rsn, m.rsn AS mobile_rsn FROM participants p
+		 LEFT JOIN mobile_tracking m ON m.challenge_code = p.challenge_code AND m.rsn = p.rsn
+		 WHERE p.challenge_code = ? AND p.token = ?`)
+		.bind(code, request.headers.get('X-Participant-Token')).first();
+	if (!participant) return json({ error: 'Join this challenge before switching your tracking mode' }, 403);
+	// Retrying a successful request must not replace its baseline.
+	if (participant.mobile_rsn) return readChallenge(code, env);
+	const now = Date.now();
+	if (now >= challenge.ends_at) return json({ error: 'This challenge has finished' }, 400);
+	const problem = mobileSupport(challenge);
+	if (problem) return json({ error: problem }, 400);
+	const body = await readJson(request);
+	const cutoff = body?.publishedAt;
+	if (!Number.isSafeInteger(cutoff) || cutoff > now - 10000 || cutoff < now - 300000)
+		return json({ error: 'Hop worlds, wait 15 seconds, then switch to mobile tracking. This lets Hiscores catch up before the handover.' }, 400);
+	let snapshot;
+	try { snapshot = await fetchMobileSnapshot(challenge, participant.rsn); }
+	catch (error) { return json({ error: error.message }, 503); }
+	const checked = Date.now();
+	if (checked >= challenge.ends_at) return json({ error: 'This challenge has finished' }, 400);
+	const active = checked >= challenge.starts_at;
+	// The guard is evaluated atomically with the insert. A live progress upload racing the lookup
+	// either makes this switch fail, or is handled using the stored cutoff in submitEvents.
+	await env.DB.batch([
+		env.DB.prepare(
+			`INSERT OR IGNORE INTO mobile_tracking
+			 (challenge_code, rsn, baseline, latest, last_checked, next_check, status)
+			 SELECT ?, ?, ?, ?, ?, ?, ? WHERE NOT EXISTS (
+			 SELECT 1 FROM events WHERE challenge_code = ? AND rsn = ?
+			 AND occurred_at > ? AND kind IN ('kc', 'raid', 'xp', 'level'))`)
+			.bind(code, participant.rsn, active ? JSON.stringify(snapshot) : null,
+				active ? JSON.stringify(snapshot) : null, active ? checked : null,
+				active ? nextMobileCheck(challenge, checked) : challenge.starts_at,
+				active ? 'Switched to Hiscores. Existing scores kept; checks every 10 minutes.' : 'Waiting for the challenge to start.',
+				code, participant.rsn, cutoff),
+		env.DB.prepare(
+			`INSERT OR IGNORE INTO mobile_handovers (challenge_code, rsn, cutoff_at)
+			 SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?)`)
+			.bind(code, participant.rsn, cutoff, code, participant.rsn)
+	]);
+	const switched = await env.DB.prepare('SELECT rsn FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?')
+		.bind(code, participant.rsn).first();
+	if (!switched) return json({ error: 'You gained RuneLite progress after your last hop. Hop again and switch before continuing to play. Your existing score is unchanged.' }, 409);
+	return readChallenge(code, env);
+}
+
 async function submitEvents(code, request, env)
 {
 	const challenge = await loadChallenge(code, env);
@@ -458,8 +516,9 @@ async function submitEvents(code, request, env)
 
 	const token = request.headers.get('X-Participant-Token');
 	const participant = await env.DB.prepare(
-		`SELECT p.rsn, m.rsn AS mobile_rsn FROM participants p
+		`SELECT p.rsn, m.rsn AS mobile_rsn, h.cutoff_at FROM participants p
 		 LEFT JOIN mobile_tracking m ON m.challenge_code = p.challenge_code AND m.rsn = p.rsn
+		 LEFT JOIN mobile_handovers h ON h.challenge_code = p.challenge_code AND h.rsn = p.rsn
 		 WHERE p.challenge_code = ? AND p.token = ?`)
 		.bind(code, token)
 		.first();
@@ -501,37 +560,29 @@ async function submitEvents(code, request, env)
 			continue;
 		}
 
-		let kind = event.kind;
-		let points = eventPoints(event, challenge, drops);
-		if (participant.mobile_rsn)
-		{
-			// Hiscores owns all progress and points. RuneLite supplies only evidence of firsts.
-			const rule = drops.find(rule => rule.name.toLowerCase() === String(event.itemName ?? '').toLowerCase());
-			if (kind === 'drop' && points !== null
-				&& rule && (rule.firstPrize || (typeOf(challenge) === 'RAID' && rule.purple))) kind = 'claim_drop';
-			else if (kind === 'raid' && points !== null) kind = 'claim_raid';
-			else continue;
-			points = 0;
-		}
-		if (points === null)
-		{
-			continue;
-		}
+		const points = eventPoints(event, challenge, drops);
+		if (points === null) continue;
+		const rule = drops.find(rule => rule.name.toLowerCase() === String(event.itemName ?? '').toLowerCase());
+		const claimKind = event.kind === 'drop' && rule
+			&& (rule.firstPrize || (typeOf(challenge) === 'RAID' && rule.purple)) ? 'claim_drop'
+			: event.kind === 'raid' ? 'claim_raid' : null;
+		if (participant.mobile_rsn && (participant.cutoff_at == null || occurredAt > participant.cutoff_at) && !claimKind) continue;
 
+		// Decide the scoring mode inside the INSERT, not just from the earlier participant read.
+		// A request already in flight when the handover commits must obey the new cutoff too.
 		statements.push(env.DB.prepare(
-			`INSERT OR IGNORE INTO events
-				(id, challenge_code, rsn, kind, item_name, amount, points, occurred_at, recorded_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-			.bind(
-				event.id,
-				code,
-				participant.rsn,
-				kind,
-				event.kind === 'kc' ? null : String(event.itemName ?? ''),
-				event.amount,
-				points,
-				occurredAt,
-				now));
+			`WITH mode AS (SELECT EXISTS (
+			 SELECT 1 FROM mobile_tracking m LEFT JOIN mobile_handovers h
+			 ON h.challenge_code = m.challenge_code AND h.rsn = m.rsn
+			 WHERE m.challenge_code = ? AND m.rsn = ? AND (h.cutoff_at IS NULL OR ? > h.cutoff_at)
+			) AS claims_only)
+			 INSERT OR IGNORE INTO events
+			 (id, challenge_code, rsn, kind, item_name, amount, points, occurred_at, recorded_at)
+			 SELECT ?, ?, ?, CASE WHEN claims_only THEN ? ELSE ? END, ?, ?,
+			 CASE WHEN claims_only THEN 0 ELSE ? END, ?, ? FROM mode
+			 WHERE claims_only = 0 OR ? IS NOT NULL`)
+			.bind(code, participant.rsn, occurredAt, event.id, code, participant.rsn, claimKind, event.kind,
+				event.kind === 'kc' ? null : String(event.itemName ?? ''), event.amount, points, occurredAt, now, claimKind));
 	}
 
 	if (statements.length > 0)
@@ -777,6 +828,7 @@ async function removeParticipant(code, rsn, request, env)
 	await env.DB.batch([
 		env.DB.prepare('DELETE FROM shots WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
 		env.DB.prepare('DELETE FROM events WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
+		env.DB.prepare('DELETE FROM mobile_handovers WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
 		env.DB.prepare('DELETE FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?').bind(code, rsn),
 		env.DB.prepare('DELETE FROM participants WHERE challenge_code = ? AND rsn = ?').bind(code, rsn)
 	]);
@@ -913,7 +965,9 @@ async function refreshTotals(code, rsn, env, challenge = null)
 	const mobile = await env.DB.prepare('SELECT baseline, latest FROM mobile_tracking WHERE challenge_code = ? AND rsn = ?')
 		.bind(code, rsn).first();
 	const external = mobileTotals(rules, mobile);
-	totals.points += external.points;
+	totals.points = typeOf(rules) === 'BOSS'
+		? Math.trunc((totals.kc + external.kills) / rules.kc_per) * rules.kc_points + totals.eventPoints
+		: totals.points + external.points;
 	totals.kills += external.kills;
 	totals.levels += external.levels;
 	for (const [mode, count] of Object.entries(external.raidModes)) totals.raidModes[mode] = (totals.raidModes[mode] ?? 0) + count;

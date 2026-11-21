@@ -131,13 +131,15 @@ edit the source list and run `python3 scripts/pack-board-art.py` with Pillow ins
 
 ## Test mobile tracking and manual first prizes
 
-This update requires additive migration `005-mobile-and-firsts.sql`. It is safe to run again and
+This update requires additive migrations `005-mobile-and-firsts.sql` and `006-mobile-handover.sql`. It is safe to run again and
 preserves existing events, scores and Discord message IDs. Apply it before deploying the Worker.
 From `backend` in PowerShell, with your separate test database and test Worker configured:
 
 ```powershell
 npx wrangler d1 execute botw-discord-test --remote --config .\wrangler.test.toml --file .\migrations\005-mobile-and-firsts.sql
 if ($LASTEXITCODE -ne 0) { throw "Migration failed; stop before deployment" }
+npx wrangler d1 execute botw-discord-test --remote --config .\wrangler.test.toml --file .\migrations\006-mobile-handover.sql
+if ($LASTEXITCODE -ne 0) { throw "Handover migration failed; stop before deployment" }
 npx wrangler deploy --config .\wrangler.test.toml
 if ($LASTEXITCODE -ne 0) { throw "Test deployment failed" }
 ```
@@ -159,6 +161,21 @@ set its **Server address** to your test Worker URL.
    that adjustment while adding subsequent wins.
 5. Under **First prize candidates**, use **Edit firsts** to enter a winner, mark a prize Unclaimed,
    and restore Automatic. These edits must not change anyone's points.
+
+6. Join a separate event with Mobile player unticked, and earn a score through RuneLite. Hop worlds,
+   wait 15 seconds, then use **Switch to mobile tracking** inside that event. Existing points and
+   firsts must stay. Gain more progress and hop; after the next Hiscores check only the new gains
+   should be added. Switching again must not reset the baseline. If you earn live progress after
+   the hop but before switching, the server asks you to hop again to avoid overlapping totals.
+
+Existing entries switch using their participant token. A handover cutoff separates older queued
+RuneLite events from future unscored claims. The INSERT checks the mode atomically, including for
+requests that started before the switch. Boss kill point thresholds span the old and new counts.
+There is no switch back to live scoring for that event. The world hop publishes the latest Hiscores;
+these public counters do not expose a timestamp for each individual kill.
+
+For production, apply both migrations using database `botw` and config `wrangler.toml` before deploying
+the new Worker. Both new migrations can be run again safely. Do not rerun older ALTER migrations.
 
 The existing minute cron runs a bounded queue of up to 20 due mobile entries per minute before
 Discord sync. Each successful entry is scheduled 10 minutes ahead, with a final check near the

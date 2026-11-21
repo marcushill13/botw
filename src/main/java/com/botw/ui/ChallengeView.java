@@ -66,6 +66,7 @@ public class ChallengeView extends JPanel
 	/** Held so the leaderboard alone can be redrawn when edit mode is switched on and off. */
 	private final JPanel leaderboardHolder = new JPanel();
 	private final JPanel prizeHolder = new JPanel();
+	private final JPanel mobileSwitchHolder = new JPanel();
 	private String ranking = "Overall";
 
 	/** Held for the same reason: both move when points land, and nothing else on the screen does. */
@@ -176,6 +177,10 @@ public class ChallengeView extends JPanel
 
 		body.add(Cards.gap(8));
 		body.add(codeRow(challenge, creator));
+		mobileSwitchHolder.setLayout(new BoxLayout(mobileSwitchHolder, BoxLayout.Y_AXIS));
+		mobileSwitchHolder.setBackground(Theme.BACKGROUND);
+		mobileSwitchHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
+		body.add(mobileSwitchHolder);
 
 		if (onEndPreview != null)
 		{
@@ -388,6 +393,24 @@ public class ChallengeView extends JPanel
 	 * Without it the preview is indistinguishable from having lost your creator rights, which is a
 	 * frightening thing to see on a challenge you are running.
 	 */
+	public void offerMobileSwitch(Runnable onSwitch)
+	{
+		mobileSwitchHolder.removeAll();
+		mobileSwitchHolder.add(Cards.gap(8));
+		JPanel card = Cards.card();
+		card.add(Cards.headline("Mobile Player"));
+		card.add(Cards.muted("Keep your existing score and use Hiscores checks every 10 minutes. RuneLite still records firsts and screenshots."));
+		card.add(Cards.gap(5));
+		card.add(Cards.muted("Hop worlds and wait 15 seconds first. The switch stays on for this event."));
+		card.add(Cards.gap(6));
+		JButton button = Cards.button("Switch to mobile tracking");
+		button.addActionListener(event -> onSwitch.run());
+		card.add(button);
+		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
+		mobileSwitchHolder.add(card);
+		mobileSwitchHolder.revalidate();
+	}
+
 	private JPanel previewBanner(Runnable onEndPreview)
 	{
 		JPanel card = Cards.card();

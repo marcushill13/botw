@@ -106,11 +106,16 @@ can also need a creator correction. Hiscores cannot prove exactly when each kill
 Clue Hiscores do not verify when a casket was opened or whether a player followed no-stacking rules.
 Checks may be delayed by outages or a busy queue; the last successful score stays in place.
 
-Mobile mode is chosen on first joining and stays fixed for that challenge, including desktop sessions.
+Tick Mobile player when joining, or use **Switch to mobile tracking** inside a challenge you have
+already joined. For an existing entry, hop worlds, wait 15 seconds, and switch before earning more
+progress. Your existing score, drops and creator adjustments stay; only progress after the new
+Hiscores baseline is added. Queued RuneLite events from before the hop can still arrive safely.
+Once enabled, Hiscores scoring stays on for that challenge, including desktop sessions.
 RuneLite KC/XP reports are ignored for that entry to avoid double counting. RuneLite still records
 first-prize drops, raid first clears, first purples and screenshots as unscored claims. Even a drop
-marked Points awards no automatic points in mobile mode; staff use Edit points after checking evidence. Rejoining keeps the original
-baseline, even if Mobile player is unticked and then ticked again. The target and dates cannot change once mobile tracking is in use; scoring rules can still
+marked Points awards no automatic points in mobile mode; staff use Edit points after checking evidence. Rejoining keeps the existing
+baseline, even if Mobile player is unticked and then ticked again. Repeating the switch also keeps
+that baseline. If you gain live progress after your hop, hop again before switching. The target and dates cannot change once mobile tracking is in use; scoring rules can still
 be corrected and applied to the recorded gains.
 
 **Drops and first prizes:** mobile players send screenshots to clan staff. The creator uses **Edit

@@ -758,7 +758,7 @@ public class BotwPanel extends PluginPanel
 				Challenge open = snapshot.getChallenge();
 				boolean canPreview = !asPlayer && challenges.creatorTokenFor(code) != null;
 
-				show(new ChallengeView(
+				ChallengeView view = new ChallengeView(
 					open,
 					snapshot.getLeaderboard(),
 					playerName.get(),
@@ -775,7 +775,52 @@ public class BotwPanel extends PluginPanel
 					snapshot.getDiscordRankLimit(),
 					creatorToken == null ? null : rankLimit ->
 						connectDiscord(code, creatorToken, rankLimit, snapshot.getDiscordRankLimit() != null),
-					creatorToken == null ? null : () -> removeDiscord(code, creatorToken)));
+					creatorToken == null ? null : () -> removeDiscord(code, creatorToken));
+				if (!asPlayer && membership != null && membership.isParticipant() && !challenges.isMobile(code)
+					&& open.getEndsAt() > System.currentTimeMillis())
+					view.offerMobileSwitch(() -> switchToMobile(code));
+				show(view);
+			});
+		});
+	}
+
+	private volatile long hiscoresPublishedAt;
+	private volatile String hiscoresPublishedRsn;
+
+	public void noteHiscoresPublish(String rsn, long hoppedAt)
+	{
+		hiscoresPublishedRsn = rsn;
+		hiscoresPublishedAt = hoppedAt;
+	}
+
+	private void switchToMobile(String code)
+	{
+		long cutoff = hiscoresPublishedAt;
+		String rsn = playerName.get();
+		long age = System.currentTimeMillis() - cutoff;
+		if (rsn == null || !rsn.equalsIgnoreCase(hiscoresPublishedRsn) || age < 15000 || age > 300000)
+		{
+			Cards.warn(this, "Hop worlds, wait 15 seconds, then press Switch to mobile tracking. This publishes your latest progress to Hiscores.");
+			return;
+		}
+		String token = challenges.participantTokenFor(code);
+		if (token == null) return;
+		if (JOptionPane.showConfirmDialog(this,
+			"Switch this challenge to Hiscores tracking? Your existing score stays. Future KC/XP use 10-minute checks, and RuneLite still records firsts and screenshots. This stays on for this event.",
+			BotwPlugin.NAME, JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) return;
+		busy("Switching to mobile tracking…");
+		executor.execute(() ->
+		{
+			BotwApi.Result<BotwApi.Snapshot> result = api.switchToMobile(config.serverUrl(), code, token, cutoff);
+			SwingUtilities.invokeLater(() ->
+			{
+				if (result.ok())
+				{
+					challenges.put(result.getValue().getChallenge(), null, null);
+					updateMobileMembership(result.getValue());
+				}
+				else Cards.warn(this, result.getError());
+				openChallenge(code);
 			});
 		});
 	}

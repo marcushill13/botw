@@ -162,6 +162,15 @@ public class BotwApi
 			? Result.failed("This server does not support mobile tracking yet. Check your server address and deploy the mobile update.") : result;
 	}
 
+	public Result<Snapshot> switchToMobile(String baseUrl, String code, String participantToken, long publishedAt)
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("publishedAt", publishedAt);
+		Result<Snapshot> result = send(new Request.Builder().url(url(baseUrl, "v1", "challenges", code, "mobile"))
+			.put(RequestBody.create(JSON, gson.toJson(body))).header("X-Participant-Token", participantToken));
+		return result.isGone() ? Result.failed("This server does not support switching to mobile yet. Check the server address and deploy the latest backend.") : result;
+	}
+
 	public Result<Snapshot> setFirsts(String baseUrl, String code, String creatorToken, Map<String, String> winners)
 	{
 		JsonObject values = new JsonObject();

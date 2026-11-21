@@ -46,7 +46,7 @@ final class MobilePlayerCard extends JPanel
 		add(Cards.gap(5));
 		add(note("RuneLite still records firsts and screenshots. Send screenshots for drops earned on mobile."));
 		add(Cards.gap(5));
-		add(note("Choose when first joining. This scoring mode stays fixed for this event, including when you play on RuneLite."));
+		add(note("Choose when joining, or switch later inside a joined challenge. Once enabled, Hiscores scoring stays on for this event."));
 		add(Cards.gap(5));
 		add(note("Hop before the event starts and finishes. Entry raids and activities without Hiscores counters are not supported."));
 		updateBorder();

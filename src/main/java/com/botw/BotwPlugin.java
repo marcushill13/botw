@@ -74,6 +74,7 @@ public class BotwPlugin extends Plugin
 	private ClientToolbar clientToolbar;
 
 	private NavigationButton navigationButton;
+	private long mobileWorldHopAt;
 
 	@Provides
 	BotwConfig provideConfig(ConfigManager configManager)
@@ -142,6 +143,8 @@ public class BotwPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
+		if (state == GameState.HOPPING) mobileWorldHopAt = System.currentTimeMillis();
+		if (state == GameState.LOGIN_SCREEN || state == GameState.CONNECTION_LOST) mobileWorldHopAt = 0;
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING
 			|| state == GameState.CONNECTION_LOST || state == GameState.LOGGING_IN)
 		{
@@ -150,6 +153,12 @@ public class BotwPlugin extends Plugin
 		if (state != GameState.LOGGED_IN)
 		{
 			return;
+		}
+
+		if (mobileWorldHopAt > 0)
+		{
+			panel.noteHiscoresPublish(localPlayerName(), mobileWorldHopAt);
+			mobileWorldHopAt = 0;
 		}
 
 		// Both are stored per account, so they cannot be read until there is an account to read them

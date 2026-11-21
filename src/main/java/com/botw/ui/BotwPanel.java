@@ -23,7 +23,6 @@ import javax.inject.Singleton;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -377,15 +376,8 @@ public class BotwPanel extends PluginPanel
 		screen.add(code);
 
 		screen.add(Cards.gap(10));
-		JCheckBox mobile = new JCheckBox("Mobile player");
-		mobile.setBackground(Theme.BACKGROUND);
-		mobile.setForeground(Theme.TEXT);
-		mobile.setFont(Theme.body());
-		mobile.setAlignmentX(Component.LEFT_ALIGNMENT);
+		MobilePlayerCard mobile = new MobilePlayerCard();
 		screen.add(mobile);
-		screen.add(Cards.muted("KC/XP use Hiscores checks every 10 minutes. Log out or hop worlds to refresh. RuneLite can still record firsts and screenshots."));
-		screen.add(Cards.muted("Hop before the event starts and finishes. This scoring mode stays fixed, even if you rejoin with the box unticked."));
-		screen.add(Cards.muted("Raid Entry modes and minigames without Hiscores counters cannot be tracked on mobile."));
 		screen.add(Cards.gap(6));
 		screen.add(new TileButton("Join", null, () -> join(code.getText().trim().toUpperCase(), mobile.isSelected())));
 

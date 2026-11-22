@@ -677,7 +677,8 @@ public class BotwPanel extends PluginPanel
 		{
 			if (entry.getRsn().equalsIgnoreCase(playerName.get()))
 			{
-				challenges.setMobile(snapshot.getChallenge().getCode(), entry.isMobilePlayer());
+				if (entry.hasMobileTrackingState())
+					challenges.setMobile(snapshot.getChallenge().getCode(), entry.isMobilePlayer());
 				return;
 			}
 		}
@@ -776,9 +777,8 @@ public class BotwPanel extends PluginPanel
 					creatorToken == null ? null : rankLimit ->
 						connectDiscord(code, creatorToken, rankLimit, snapshot.getDiscordRankLimit() != null),
 					creatorToken == null ? null : () -> removeDiscord(code, creatorToken));
-				if (!asPlayer && membership != null && membership.isParticipant() && !challenges.isMobile(code)
-					&& open.getEndsAt() > System.currentTimeMillis())
-					view.offerMobileSwitch(() -> switchToMobile(code));
+				if (!asPlayer && membership != null && membership.isParticipant())
+					view.configureMobileTracking(challenges.isMobile(code), () -> switchToMobile(code));
 				show(view);
 			});
 		});

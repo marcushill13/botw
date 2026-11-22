@@ -26,7 +26,17 @@ public class LeaderboardEntry
 	 * as one that was counted.
 	 */
 	private boolean manual;
-	private boolean mobilePlayer;
+	private Boolean mobilePlayer;
+
+	public boolean isMobilePlayer()
+	{
+		return Boolean.TRUE.equals(mobilePlayer);
+	}
+
+	public boolean hasMobileTrackingState()
+	{
+		return mobilePlayer != null;
+	}
 	private Long mobileLastChecked;
 	private String mobileStatus;
 

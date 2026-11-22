@@ -67,6 +67,8 @@ public class ChallengeView extends JPanel
 	private final JPanel leaderboardHolder = new JPanel();
 	private final JPanel prizeHolder = new JPanel();
 	private final JPanel mobileSwitchHolder = new JPanel();
+	private boolean savedMobileMode;
+	private Runnable onMobileSwitch;
 	private String ranking = "Overall";
 
 	/** Held for the same reason: both move when points land, and nothing else on the screen does. */
@@ -393,22 +395,79 @@ public class ChallengeView extends JPanel
 	 * Without it the preview is indistinguishable from having lost your creator rights, which is a
 	 * frightening thing to see on a challenge you are running.
 	 */
-	public void offerMobileSwitch(Runnable onSwitch)
+	public void configureMobileTracking(boolean savedActive, Runnable onSwitch)
 	{
+		savedMobileMode = savedActive;
+		onMobileSwitch = onSwitch;
+		renderMobileTracking();
+	}
+
+	private void renderMobileTracking()
+	{
+		if (onMobileSwitch == null) return;
 		mobileSwitchHolder.removeAll();
 		mobileSwitchHolder.add(Cards.gap(8));
 		JPanel card = Cards.card();
+		LeaderboardEntry you = entries.stream().filter(entry -> entry.getRsn().equalsIgnoreCase(yourName))
+			.findFirst().orElse(null);
+		boolean confirmed = you != null && you.hasMobileTrackingState();
+		boolean active = confirmed ? you.isMobilePlayer() : savedMobileMode;
+		card.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(active && confirmed ? Theme.LIVE : Theme.GOLD_DIM),
+			BorderFactory.createEmptyBorder(8, 8, 8, 8)));
 		card.add(Cards.headline("Mobile Player"));
-		card.add(Cards.muted("Keep your existing score and use Hiscores checks every 10 minutes. RuneLite still records firsts and screenshots."));
-		card.add(Cards.gap(5));
-		card.add(Cards.muted("Hop worlds and wait 15 seconds first. The switch stays on for this event."));
 		card.add(Cards.gap(6));
-		JButton button = Cards.button("Switch to mobile tracking");
-		button.addActionListener(event -> onSwitch.run());
-		card.add(button);
+		if (active)
+		{
+			JLabel status = new JLabel(confirmed ? "Mobile mode active" : "Mobile mode saved", statusDot(confirmed ? Theme.LIVE : Theme.GOLD), javax.swing.SwingConstants.LEFT);
+			status.setFont(Theme.heading());
+			status.setForeground(confirmed ? Theme.LIVE : Theme.GOLD);
+			status.setAlignmentX(Component.LEFT_ALIGNMENT);
+			card.add(status);
+			card.add(Cards.gap(5));
+			card.add(Cards.muted(confirmed ? "Hiscores tracking every 10 minutes. RuneLite still records firsts and screenshots."
+				: "Your saved choice has been kept. This server has not confirmed mobile tracking; its backend needs updating."));
+			if (confirmed && you.getMobileLastChecked() != null)
+				card.add(Cards.muted("Last check: " + java.time.Instant.ofEpochMilli(you.getMobileLastChecked()).atZone(java.time.ZoneId.systemDefault())
+					.format(java.time.format.DateTimeFormatter.ofPattern("d MMM HH:mm"))));
+			if (confirmed && you.getMobileStatus() != null) card.add(Cards.muted(you.getMobileStatus()));
+		}
+		else
+		{
+			card.add(Cards.muted("Keep your score. Hiscores checks every 10 minutes; RuneLite still records firsts and screenshots."));
+			card.add(Cards.gap(5));
+			card.add(Cards.muted("Hop worlds and wait 15 seconds first. Press the button below to activate; the hop reminder alone does not enable it."));
+			if (challenge.getEndsAt() > System.currentTimeMillis())
+			{
+				card.add(Cards.gap(7));
+				JButton button = Cards.button("Switch to mobile tracking");
+				button.setFont(Theme.heading());
+				button.setOpaque(true);
+				button.setBackground(Theme.GOLD);
+				button.setForeground(Theme.BACKGROUND);
+				button.setBorder(BorderFactory.createEmptyBorder(8, 6, 8, 6));
+				button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 38));
+				button.addActionListener(event -> onMobileSwitch.run());
+				card.add(button);
+			}
+		}
 		card.setMaximumSize(new Dimension(Integer.MAX_VALUE, card.getPreferredSize().height));
 		mobileSwitchHolder.add(card);
 		mobileSwitchHolder.revalidate();
+		mobileSwitchHolder.repaint();
+	}
+
+	private static javax.swing.Icon statusDot(Color colour)
+	{
+		return new javax.swing.Icon()
+		{
+			public int getIconWidth() { return 10; }
+			public int getIconHeight() { return 10; }
+			public void paintIcon(Component component, java.awt.Graphics graphics, int x, int y)
+			{
+				graphics.setColor(colour);
+				graphics.fillOval(x + 1, y + 1, 8, 8);
+			}
+		};
 	}
 
 	private JPanel previewBanner(Runnable onEndPreview)
@@ -569,6 +628,7 @@ public class ChallengeView extends JPanel
 		}
 
 		entries = fresh;
+		renderMobileTracking();
 		if (latest != null) challenge.setPrizeCandidates(latest.getPrizeCandidates());
 		renderLeaderboard();
 		renderYourPoints();

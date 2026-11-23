@@ -433,6 +433,13 @@ public class ChallengeView extends JPanel
 		}
 		else
 		{
+			Color inactive = new Color(230, 95, 95);
+			JLabel status = new JLabel("Mobile mode inactive", statusDot(inactive), javax.swing.SwingConstants.LEFT);
+			status.setFont(Theme.heading());
+			status.setForeground(inactive);
+			status.setAlignmentX(Component.LEFT_ALIGNMENT);
+			card.add(status);
+			card.add(Cards.gap(5));
 			card.add(Cards.muted("Keep your score. Hiscores checks every 10 minutes; RuneLite still records firsts and screenshots."));
 			card.add(Cards.gap(5));
 			card.add(Cards.muted("Hop worlds and wait 15 seconds first. Press the button below to activate; the hop reminder alone does not enable it."));

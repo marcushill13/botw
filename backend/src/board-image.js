@@ -343,6 +343,13 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 
 	const display = presentation(challenge);
 	centered(pixels, height, firsts ? 'FIRSTS' : `${display.title} HISCORES`, 39, INK);
+	if (firsts)
+	{
+	 centered(pixels, height, 'BOUNTIES', 88, SHADE, 3);
+	 centered(pixels, height, 'FIRST PERSON TO GET THE DROP WINS', 126, MUTED_INK, 1);
+	}
+	else
+	{
 	artwork(pixels, height, palette, theme, challenge);
 	const target = fit(challenge.boss || display.target, 29);
 	const targetScale = textWidth(target, 3) <= WIDTH - 92 ? 3 : 2;
@@ -357,6 +364,8 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 		diamond(pixels, height, WIDTH / 2, 157, 3, ACCENT);
 	}
 
+	}
+
 	if (firsts)
 	{
 	 rect(pixels, height, 41, 175, WIDTH - 82, 23, SHADE);
@@ -367,7 +376,12 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 	  if (i % 2 === 0) rect(pixels, height, 41, y - 6, WIDTH - 82, 76, STRIPE);
 	  const sprite = itemArtwork(prize.itemId) ?? boardArtwork(challenge);
 	  drawSprite(pixels, height, palette, sprite, 75 - Math.floor(sprite.width / 2), y + 22 - Math.floor(sprite.height / 2));
-	  const words = String(prize.name).split(/\s+/);
+	  if (prize.prize) {
+   const label = fit(prize.prize, 12);
+   const scale = textWidth(label, 2) <= 62 ? 2 : 1;
+   write(pixels, height, label, 75 - Math.floor(textWidth(label, scale) / 2), y + 52, SHADE, scale);
+  }
+  const words = String(prize.name).split(/\s+/);
 	  let lines = [''];
 	  for (const word of words) {
 	   if (lines[lines.length - 1].length + word.length + 1 > 22) lines.push('');

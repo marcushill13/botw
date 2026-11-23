@@ -197,3 +197,11 @@ Item sprites are actual OSRS inventory artwork from RuneLite's item icon cache (
 Run `python scripts/pack-firsts-art.py` to rebuild the offline preset item catalogue.
 Existing target artwork and credits above also apply. Custom items outside the catalogue
 use the event's actual OSRS target artwork as a fallback.
+
+Creators can enter a prize label (such as `5M`) beside each First item in Create/Edit
+challenge. Labels are shown under the item icons on the Discord Bounties scroll.
+They are informational and do not award event points. Older clients preserve labels
+when editing an event. No schema migration is required.
+
+For the existing GG37GV Tempoross event only, `operations/gg37gv-bounties.sql` sets
+Big harpoonfish to 5M, Tome of Water (empty) to 5M and Tiny tempor to 10M.

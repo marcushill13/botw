@@ -85,6 +85,6 @@ export function firstPrizeRows(challenge, candidates = [])
   const winner = candidates.find(row => rule.key.startsWith('drop:')
    ? !['clear', 'purple'].includes(row.category) && row.itemName?.toLowerCase() === rule.name.toLowerCase()
    : row.category === rule.key);
-  return { key: rule.key, name: rule.name, itemId: rule.itemId ?? null, rsn: winner?.rsn || null };
+  return { key: rule.key, name: rule.name, itemId: rule.itemId ?? null, prize: rule.prize ?? '', rsn: winner?.rsn || null };
  });
 }

@@ -211,3 +211,26 @@ test('minigame first prizes and per-item points work independently and can be re
 	await editDrops(rules.map(rule => ({ ...rule, pointsEnabled: false })));
 	await expectBoard(2, 'WINS', ['Bruma torch', 'Phoenix']);
 });
+
+test('bounty prize labels save, survive older clients, and never change points or first winners', async () =>
+{
+ const app = service();
+ const { code, creatorToken } = await app.create('Tempoross', 'MINIGAME', {
+  drops: [{ name: 'Tiny tempor', itemId: 25602, firstPrize: true, prize: '10M', points: 0 }]
+ });
+ const send = await app.player(code, 'Hero');
+ await send([app.event('temp1', 'completion', 1, 'Tempoross'), app.event('pet1', 'drop', 1, 'Tiny tempor')]);
+ const before = await app.board(code);
+ const headers = { 'X-Creator-Token': creatorToken };
+ const edit = await app.request('PATCH', '/' + code, { drops: [{ name: 'Tiny tempor', itemId: 25602, firstPrize: true, points: 0 }] }, headers);
+ assert.equal(edit.status, 200);
+ let board = await app.board(code);
+ assert.equal(board.challenge.drops[0].prize, '10M');
+ assert.deepEqual(board.leaderboard, before.leaderboard);
+ assert.deepEqual(board.challenge.prizeCandidates, before.challenge.prizeCandidates);
+ assert.equal((await app.request('PATCH', '/' + code, { drops: [{ ...board.challenge.drops[0], prize: '5M' }] }, headers)).status, 200);
+ assert.equal((await app.board(code)).challenge.drops[0].prize, '5M');
+ assert.equal((await app.request('PATCH', '/' + code, { drops: [{ ...board.challenge.drops[0], prize: 'way too long a prize label' }] }, headers)).status, 400);
+ assert.equal((await app.request('PATCH', '/' + code, { drops: [{ ...board.challenge.drops[0], prize: '' }] }, headers)).status, 200);
+ assert.equal((await app.board(code)).challenge.drops[0].prize, undefined);
+});

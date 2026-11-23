@@ -306,7 +306,11 @@ async function updateChallenge(code, request, env)
 		return json({ error: problem }, 400);
 	}
 
-	const drops = normaliseDrops(updatedRules.drops, updatedRules.eventType);
+	// Older clients do not send prize labels. Preserve them unless explicitly edited.
+	const previousDrops = JSON.parse(challenge.drops);
+	const drops = normaliseDrops(updatedRules.drops.map(drop => !drop || Object.hasOwn(drop, 'prize') ? drop : {
+		...drop, prize: previousDrops.find(previous => previous.name.toLowerCase() === String(drop.name).toLowerCase())?.prize ?? ''
+	}), updatedRules.eventType);
 	await env.DB.prepare(
 		`UPDATE challenges
 		    SET name = ?, boss = ?, starts_at = ?, ends_at = ?, timezone = ?,
@@ -1152,6 +1156,9 @@ function validateChallenge(body)
 		return 'The drop list must contain at most 100 items';
 	}
 
+	if (body.drops.some(drop => drop?.prize != null && (typeof drop.prize !== 'string'
+		|| drop.prize.trim().length > 12 || !/^[A-Za-z0-9 .,+()/-]*$/.test(drop.prize.trim()))))
+		return 'Prize labels must be up to 12 characters (for example 5M or 5M GP)';
 	return validateWeekly(body);
 }
 
@@ -1167,6 +1174,7 @@ function normaliseDrops(drops, type)
 				points: type === 'MINIGAME' && !pointsEnabled ? 0
 					: Math.min(100000, Math.max(pointsEnabled ? 1 : 0, Math.trunc(Number(drop.points) || 0))),
 				...(drop.firstPrize === true ? { firstPrize: true } : {}),
+				...(drop.firstPrize === true && String(drop.prize ?? '').trim() ? { prize: String(drop.prize).trim() } : {}),
 				...(pointsEnabled ? { pointsEnabled: true } : {}),
 				...(drop.purple === true ? { purple: true } : {})
 			};

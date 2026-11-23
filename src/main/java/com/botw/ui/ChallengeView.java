@@ -762,7 +762,7 @@ public class ChallengeView extends JPanel
 						break;
 					}
 				}
-				prizeHolder.add(row(WeeklyRewards.spriteId(rule), rule.getName() + ": " + holder, "", Theme.TEXT));
+				prizeHolder.add(row(WeeklyRewards.spriteId(rule), rule.getName() + ": " + holder, rule.getPrize() == null ? "" : rule.getPrize(), Theme.GOLD));
 			}
 		}
 		prizeHolder.revalidate();

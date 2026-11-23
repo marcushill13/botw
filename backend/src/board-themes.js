@@ -1,6 +1,6 @@
 import { typeOf } from './weekly.js';
 
-export const BOARD_STYLE = 8;
+export const BOARD_STYLE = 9;
 
 // Target-specific pigment, independent of scores or challenge code.
 const SKILLS = {

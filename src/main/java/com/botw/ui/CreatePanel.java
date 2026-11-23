@@ -279,7 +279,7 @@ public class CreatePanel extends JPanel
 		for (DropRule rule : challenge.getDrops())
 		{
 			drops.put(rule.getName(), new DropRule(rule.getName(), rule.getItemId(), rule.getPoints(),
-				rule.isFirstPrize(), rule.isPurple(), rule.isPointsEnabled()));
+				rule.isFirstPrize(), rule.isPurple(), rule.isPointsEnabled(), rule.getPrize()));
 		}
 
 		if (type == ChallengeType.BOSS) showChosenBoss();
@@ -574,7 +574,18 @@ public class CreatePanel extends JPanel
 		{
 			JPanel tags = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 2, 0));
 			tags.setBackground(row.getBackground());
-			tags.add(dropTag("First", rule.isFirstPrize(), rule::setFirstPrize));
+			JTextField prize = Theme.textField(new JTextField(rule.getPrize() == null ? "" : rule.getPrize()));
+			prize.setPreferredSize(new Dimension(100, 24));
+			prize.setMaximumSize(new Dimension(Integer.MAX_VALUE, 24));
+			prize.setEnabled(rule.isFirstPrize());
+			prize.setToolTipText("Prize label, for example 5M (up to 12 characters). Does not award points.");
+			prize.getAccessibleContext().setAccessibleName("Prize for " + rule.getName());
+			prize.getDocument().addDocumentListener(onType(() -> rule.setPrize(prize.getText().trim())));
+			tags.add(dropTag("First", rule.isFirstPrize(), selected ->
+			{
+				rule.setFirstPrize(selected);
+				prize.setEnabled(selected);
+			}));
 			if (minigame)
 			{
 				points.setPreferredSize(new Dimension(58, 20));
@@ -592,7 +603,19 @@ public class CreatePanel extends JPanel
 			{
 				tags.add(dropTag("Purple", rule.isPurple(), rule::setPurple));
 			}
-			row.add(tags, BorderLayout.SOUTH);
+			JPanel options = new JPanel();
+			options.setLayout(new BoxLayout(options, BoxLayout.Y_AXIS));
+			options.setBackground(row.getBackground());
+			options.add(tags);
+			JPanel prizeRow = new JPanel(new BorderLayout(5, 0));
+			prizeRow.setBackground(row.getBackground());
+			JLabel prizeLabel = new JLabel("Prize");
+			prizeLabel.setFont(Theme.body());
+			prizeLabel.setForeground(Theme.TEXT);
+			prizeRow.add(prizeLabel, BorderLayout.WEST);
+			prizeRow.add(prize, BorderLayout.CENTER);
+			options.add(prizeRow);
+			row.add(options, BorderLayout.SOUTH);
 		}
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 		return row;

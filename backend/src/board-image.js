@@ -309,7 +309,7 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 {
 	const rows = leaderboard.slice(0, rankLimit);
 	const theme = boardTheme(challenge);
-	const height = firsts ? 282 + firsts.length * 82 : 282 + Math.max(1, rows.length) * 21;
+	const height = firsts ? 224 + firsts.length * 82 : 282 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
 	// Rough stone framing and an uneven, flecked sheet of parchment.
@@ -345,8 +345,8 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 	centered(pixels, height, firsts ? 'FIRSTS' : `${display.title} HISCORES`, 39, INK);
 	if (firsts)
 	{
-	 centered(pixels, height, 'BOUNTIES', 88, SHADE, 3);
-	 centered(pixels, height, 'FIRST PERSON TO GET THE DROP WINS', 126, MUTED_INK, 1);
+	 centered(pixels, height, 'BOUNTIES', 65, SHADE, 3);
+	 centered(pixels, height, 'FIRST PERSON TO GET THE DROP WINS', 97, MUTED_INK, 1);
 	}
 	else
 	{
@@ -368,11 +368,11 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 
 	if (firsts)
 	{
-	 rect(pixels, height, 41, 175, WIDTH - 82, 23, SHADE);
-	 centered(pixels, height, 'FIRST TO RECEIVE', 181, LIGHT_TEXT);
+	 rect(pixels, height, 41, 117, WIDTH - 82, 23, SHADE);
+	 centered(pixels, height, 'FIRST TO RECEIVE', 123, LIGHT_TEXT);
 	 for (let i = 0; i < firsts.length; i++) {
 	  const prize = firsts[i];
-	  const y = 211 + i * 82;
+	  const y = 153 + i * 82;
 	  if (i % 2 === 0) rect(pixels, height, 41, y - 6, WIDTH - 82, 76, STRIPE);
 	  const sprite = itemArtwork(prize.itemId) ?? boardArtwork(challenge);
 	  drawSprite(pixels, height, palette, sprite, 75 - Math.floor(sprite.width / 2), y + 22 - Math.floor(sprite.height / 2));

@@ -309,7 +309,7 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 {
 	const rows = leaderboard.slice(0, rankLimit);
 	const theme = boardTheme(challenge);
-	const height = firsts ? 224 + firsts.length * 82 : 282 + Math.max(1, rows.length) * 21;
+	const height = firsts ? 202 + firsts.length * 82 : 282 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
 	// Rough stone framing and an uneven, flecked sheet of parchment.
@@ -392,7 +392,6 @@ function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 	  write(pixels, height, prize.rsn || 'UNCLAIMED', 111, y + 43, prize.rsn ? SHADE : MUTED_INK);
 	  rect(pixels, height, 54, y + 71, WIDTH - 108, 1, ACCENT);
 	 }
-	 centered(pixels, height, 'FIRST CLAIMS', height - 61, MUTED_INK);
 	}
 	else
 	{

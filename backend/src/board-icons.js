@@ -1,4 +1,5 @@
 import { typeOf } from './weekly.js';
+import items from './board-art/items.js';
 import bosses1 from './board-art/bosses-1.js';
 import bosses2 from './board-art/bosses-2.js';
 import bosses3 from './board-art/bosses-3.js';
@@ -25,6 +26,16 @@ export function boardArtwork(challenge)
 	const catalogue = Object.hasOwn(art, type) ? art[type] : art.BOSS;
 	// Newly added or custom targets can use the actual in-game combat icon.
 	const encoded = Object.hasOwn(catalogue, target) ? catalogue[target] : skills.combat;
+	return decodeArtwork(encoded);
+}
+
+export function itemArtwork(itemId)
+{
+	return Object.hasOwn(items, itemId) ? decodeArtwork(items[itemId]) : null;
+}
+
+function decodeArtwork(encoded)
+{
 	const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
 	const [width, height, colourCount] = bytes;
 	const colours = Array.from({ length: colourCount }, (_, i) =>

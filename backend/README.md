@@ -185,3 +185,15 @@ changing array positions. Missing counters and decreases never award a lifetime 
 existing score. No post-deadline snapshot is imported. See the main README for boundary limitations.
 
 Automated checks: `node --test backend/test/*.test.mjs` and `gradlew test`.
+
+### Discord first prizes
+
+Events with first prizes show a matching Firsts scroll beside the Hiscores in the same
+image and Discord message. Unclaimed prizes display `UNCLAIMED`; automatic claims and
+creator edits use the same results as the RuneLite panel. Events without firsts retain
+their single scroll. Deploy the Worker to enable this; no plugin update or migration is needed.
+
+Item sprites are actual OSRS inventory artwork from RuneLite's item icon cache (© Jagex).
+Run `python scripts/pack-firsts-art.py` to rebuild the offline preset item catalogue.
+Existing target artwork and credits above also apply. Custom items outside the catalogue
+use the event's actual OSRS target artwork as a fallback.

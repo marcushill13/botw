@@ -294,3 +294,55 @@ test('posts once and updates the same message when the score or rank limit chang
 		globalThis.fetch = originalFetch;
 	}
 });
+
+test('first prizes use the plugin results and only add a second scroll when configured', async () =>
+{
+ const { firstPrizeRows } = await import('../src/firsts.js');
+ const challenge = { name: 'Tempoross Week', boss: 'Tempoross', event_type: 'MINIGAME', code: 'GG37GV',
+  drops: JSON.stringify([{ name: 'Big harpoonfish', itemId: 25559, firstPrize: true },
+   { name: 'Tome of Water (empty)', itemId: 25576, firstPrize: true },
+   { name: 'Tiny tempor', itemId: 25602, firstPrize: true }]) };
+ challenge.firsts = firstPrizeRows(challenge, [{ itemName: 'tome of water (empty)', rsn: 'Rainy26', manual: true }]);
+ assert.deepEqual(challenge.firsts.map(row => row.rsn), [null, 'Rainy26', null]);
+ const image = boardImage(challenge, [{ rsn: 'MarcAss', points: 12 }]);
+ assert.equal(new DataView(image.buffer, image.byteOffset).getUint32(16), 892);
+ assert.equal(new DataView(boardImage({ ...challenge, firsts: [] }, []).buffer).getUint32(16), 440);
+ for (const id of [25559, 25576, 25602]) {
+  const { itemArtwork } = await import('../src/board-icons.js');
+  assert.ok(itemArtwork(id)?.runs.length > 0, `Actual item artwork for ${id}`);
+ }
+ assert.notEqual(hiscores(challenge, []).state,
+  hiscores({ ...challenge, firsts: challenge.firsts.map(row => ({ ...row, rsn: null })) }, []).state);
+ assert.deepEqual(firstPrizeRows({ ...challenge, drops: '[]' }), []);
+ const raid = firstPrizeRows({ ...challenge, event_type: 'RAID', drops: '[]' }, [{ category: 'clear', rsn: 'Hero' }]);
+ assert.deepEqual(raid.map(row => [row.key, row.rsn]), [['clear', 'Hero'], ['purple', null]]);
+});
+
+test('a first claim updates the existing Discord attachment even when scores do not change', async () =>
+{
+ const row = { webhook_url: webhook, message_id: 'existing', last_state: null, rank_limit: 25,
+  code: 'FIRST1', boss: 'Tempoross', name: 'Firsts', event_type: 'MINIGAME', ends_at: 1800000000000,
+  drops: JSON.stringify([{ name: 'Tiny tempor', itemId: 25602, firstPrize: true }]) };
+ let winner = null;
+ const env = { DB: { prepare(sql) {
+  let args;
+  return { bind(...values) { args = values; return this; },
+   async first() { return { ...row }; },
+   async all() { return { results: sql.includes('WITH prizes') && winner ? [{ itemName: 'Tiny tempor', rsn: winner }] : [] }; },
+   async run() { if (sql.includes('SET last_state')) row.last_state = args[0]; return { meta: { changes: 1 } }; }
+  };
+ } } };
+ const originalFetch = globalThis.fetch;
+ const calls = [];
+ globalThis.fetch = async (url, options) => { calls.push({ url, ...options }); return { ok: true, json: async () => ({ id: 'existing' }) }; };
+ try {
+  await syncDiscordBoard(row.code, env, async () => []);
+  await syncDiscordBoard(row.code, env, async () => []);
+  assert.equal(calls.length, 1);
+  winner = 'MarcAss';
+  await syncDiscordBoard(row.code, env, async () => []);
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every(call => call.method === 'PATCH' && call.url.endsWith('/messages/existing')));
+  assert.notDeepEqual(await calls[0].body.get('files[0]').arrayBuffer(), await calls[1].body.get('files[0]').arrayBuffer());
+ } finally { globalThis.fetch = originalFetch; }
+});

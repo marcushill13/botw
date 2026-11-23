@@ -1,5 +1,6 @@
 /** The Discord message is owned by the service, so it keeps updating while RuneLite is closed. */
 import { boardImage, MAX_IMAGE_ROWS } from './board-image.js';
+import { firstPrizeRows, prizeCandidates } from './firsts.js';
 import { presentation } from './weekly.js';
 import { BOARD_STYLE, boardTheme } from './board-themes.js';
 
@@ -41,6 +42,7 @@ export function hiscores(challenge, leaderboard, now = Date.now())
 	const display = presentation(challenge);
 	const state = JSON.stringify({
 		style: BOARD_STYLE,
+		firsts: challenge.firsts ?? [],
 		display,
 		name: challenge.name,
 		boss: challenge.boss,
@@ -217,6 +219,8 @@ export async function syncDiscordBoard(code, env, leaderboardFor)
 	}
 
 	const leaderboard = await leaderboardFor(code, env);
+	board.firsts = firstPrizeRows(board);
+	if (board.firsts.length) board.firsts = firstPrizeRows(board, await prizeCandidates(board, env));
 	const { state, message } = hiscores(board, leaderboard);
 	if (board.message_id && board.last_state === state)
 	{

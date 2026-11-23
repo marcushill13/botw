@@ -1,6 +1,6 @@
 import { presentation } from './weekly.js';
 import { boardTheme } from './board-themes.js';
-import { boardArtwork } from './board-icons.js';
+import { boardArtwork, itemArtwork } from './board-icons.js';
 
 /** A small dependency-free PNG renderer for a parchment-style Discord board.
  *  Discord cannot style an embed's background or font, so the artwork is attached to the
@@ -161,26 +161,7 @@ function artwork(pixels, height, palette, theme, challenge)
 	}
 
 	const sprite = boardArtwork(challenge);
-	const offset = palette.length - 1; // Sprite palette index 0 is transparent.
-	palette.push(...sprite.colours);
-	const left = x - Math.floor(sprite.width / 2);
-	const top = y - Math.floor(sprite.height / 2);
-	let position = 0;
-	for (const packed of sprite.runs)
-	{
-		const index = packed & 63;
-		const length = (packed >>> 6) + 1;
-		if (!index)
-		{
-			position += length;
-			continue;
-		}
-		for (let i = 0; i < length; i++, position++)
-		{
-			setPixel(pixels, height, left + position % sprite.width,
-				top + Math.floor(position / sprite.width), offset + index);
-		}
-	}
+	drawSprite(pixels, height, palette, sprite, x - Math.floor(sprite.width / 2), y - Math.floor(sprite.height / 2));
 
 	for (const [start, end] of [[58, 180], [260, WIDTH - 58]])
 	{
@@ -199,6 +180,31 @@ function artwork(pixels, height, palette, theme, challenge)
 			diamond(pixels, height, middle, y, 4, GOLD);
 		}
 	}
+}
+
+function drawSprite(pixels, height, palette, sprite, left, top)
+{
+ const colours = [0, ...sprite.colours.map(colour => {
+  let index = palette.findIndex(existing => existing.every((channel, i) => channel === colour[i]));
+  if (index >= 0) return index;
+  if (palette.length < 256) { palette.push(colour); return palette.length - 1; }
+  // Keep the indexed PNG bounded even for an event with many different item sprites.
+  let distance = Infinity;
+  for (let i = 0; i < palette.length; i++) {
+   const next = palette[i].reduce((sum, channel, c) => sum + (channel - colour[c]) ** 2, 0);
+   if (next < distance) { distance = next; index = i; }
+  }
+  return index;
+ })];
+ let position = 0;
+ for (const packed of sprite.runs) {
+  const index = packed & 63;
+  const length = (packed >>> 6) + 1;
+  for (let i = 0; i < length; i++, position++) {
+   if (index) setPixel(pixels, height, left + position % sprite.width,
+    top + Math.floor(position / sprite.width), colours[index]);
+  }
+ }
 }
 
 function checksum(bytes)
@@ -277,16 +283,16 @@ function deflateStored(raw)
 	return out;
 }
 
-function png(pixels, height, palette)
+function png(pixels, height, palette, width = WIDTH)
 {
-	const scanlines = new Uint8Array(height * (WIDTH + 1));
+	const scanlines = new Uint8Array(height * (width + 1));
 	for (let y = 0; y < height; y++)
 	{
-		scanlines.set(pixels.subarray(y * WIDTH, (y + 1) * WIDTH), y * (WIDTH + 1) + 1);
+		scanlines.set(pixels.subarray(y * width, (y + 1) * width), y * (width + 1) + 1);
 	}
 	const compressed = deflateStored(scanlines);
 	const header = new Uint8Array(13);
-	header.set(uint32(WIDTH));
+	header.set(uint32(width));
 	header.set(uint32(height), 4);
 	header[8] = 8; // Indexed palette, eight bits per pixel.
 	header[9] = 3;
@@ -299,12 +305,11 @@ function png(pixels, height, palette)
 	]);
 }
 
-export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
+function renderBoard(challenge, leaderboard, rankLimit, palette, firsts = null)
 {
 	const rows = leaderboard.slice(0, rankLimit);
 	const theme = boardTheme(challenge);
-	const palette = themedPalette(theme.colour);
-	const height = 282 + Math.max(1, rows.length) * 21;
+	const height = firsts ? 282 + firsts.length * 82 : 282 + Math.max(1, rows.length) * 21;
 	const pixels = new Uint8Array(WIDTH * height);
 
 	// Rough stone framing and an uneven, flecked sheet of parchment.
@@ -337,7 +342,7 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 	}
 
 	const display = presentation(challenge);
-	centered(pixels, height, `${display.title} HISCORES`, 39, INK);
+	centered(pixels, height, firsts ? 'FIRSTS' : `${display.title} HISCORES`, 39, INK);
 	artwork(pixels, height, palette, theme, challenge);
 	const target = fit(challenge.boss || display.target, 29);
 	const targetScale = textWidth(target, 3) <= WIDTH - 92 ? 3 : 2;
@@ -352,6 +357,31 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 		diamond(pixels, height, WIDTH / 2, 157, 3, ACCENT);
 	}
 
+	if (firsts)
+	{
+	 rect(pixels, height, 41, 175, WIDTH - 82, 23, SHADE);
+	 centered(pixels, height, 'FIRST TO RECEIVE', 181, LIGHT_TEXT);
+	 for (let i = 0; i < firsts.length; i++) {
+	  const prize = firsts[i];
+	  const y = 211 + i * 82;
+	  if (i % 2 === 0) rect(pixels, height, 41, y - 6, WIDTH - 82, 76, STRIPE);
+	  const sprite = itemArtwork(prize.itemId) ?? boardArtwork(challenge);
+	  drawSprite(pixels, height, palette, sprite, 75 - Math.floor(sprite.width / 2), y + 22 - Math.floor(sprite.height / 2));
+	  const words = String(prize.name).split(/\s+/);
+	  let lines = [''];
+	  for (const word of words) {
+	   if (lines[lines.length - 1].length + word.length + 1 > 22) lines.push('');
+	   lines[lines.length - 1] += (lines[lines.length - 1] ? ' ' : '') + word;
+	  }
+	  write(pixels, height, fit(lines[0], 22), 111, y, INK);
+	  if (lines.length > 1) write(pixels, height, fit(lines.slice(1).join(' '), 22), 111, y + 18, INK);
+	  write(pixels, height, prize.rsn || 'UNCLAIMED', 111, y + 43, prize.rsn ? SHADE : MUTED_INK);
+	  rect(pixels, height, 54, y + 71, WIDTH - 108, 1, ACCENT);
+	 }
+	 centered(pixels, height, 'FIRST CLAIMS', height - 61, MUTED_INK);
+	}
+	else
+	{
 	rect(pixels, height, 41, 175, WIDTH - 82, 23, SHADE);
 	rect(pixels, height, 41, 175, WIDTH - 82, 2, ACCENT);
 	write(pixels, height, 'RANK', 49, 181, LIGHT_TEXT);
@@ -386,5 +416,23 @@ export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
 		const note = `Code: ${String(challenge.code ?? '').slice(0, 8)}`;
 		write(pixels, height, note, Math.floor((WIDTH - textWidth(note, 1)) / 2), footerY + 3, MUTED_INK, 1, true);
 	}
-	return png(pixels, height, palette);
+	}
+
+	return { pixels, height };
+}
+
+export function boardImage(challenge, leaderboard, rankLimit = MAX_IMAGE_ROWS)
+{
+ const palette = themedPalette(boardTheme(challenge).colour);
+ const left = renderBoard(challenge, leaderboard, rankLimit, palette);
+ const firsts = challenge.firsts ?? [];
+ if (!firsts.length) return png(left.pixels, left.height, palette);
+ const right = renderBoard(challenge, [], rankLimit, palette, firsts);
+ const width = WIDTH * 2 + 12;
+ const height = Math.max(left.height, right.height);
+ const pixels = new Uint8Array(width * height);
+ for (const [panel, offset] of [[left, 0], [right, WIDTH + 12]]) {
+  for (let y = 0; y < panel.height; y++) pixels.set(panel.pixels.subarray(y * WIDTH, (y + 1) * WIDTH), y * width + offset);
+ }
+ return png(pixels, height, palette, width);
 }

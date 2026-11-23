@@ -7,6 +7,7 @@ import com.botw.track.ChallengeStore;
 import com.botw.track.EventSender;
 import com.botw.track.KillTracker;
 import com.botw.track.Outbox;
+import com.botw.track.MobileHop;
 import com.botw.track.WeeklyTracker;
 import com.google.inject.Provides;
 import java.util.concurrent.ScheduledExecutorService;
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.EventBus;
 import net.runelite.client.eventbus.Subscribe;
@@ -74,7 +76,7 @@ public class BotwPlugin extends Plugin
 	private ClientToolbar clientToolbar;
 
 	private NavigationButton navigationButton;
-	private long mobileWorldHopAt;
+	private final MobileHop mobileHop = new MobileHop();
 
 	@Provides
 	BotwConfig provideConfig(ConfigManager configManager)
@@ -132,6 +134,7 @@ public class BotwPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		mobileHop.reset();
 		weeklyTracker.reset();
 		sender.stop();
 		eventBus.unregister(killTracker);
@@ -143,8 +146,14 @@ public class BotwPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		GameState state = event.getGameState();
-		if (state == GameState.HOPPING) mobileWorldHopAt = System.currentTimeMillis();
-		if (state == GameState.LOGIN_SCREEN || state == GameState.CONNECTION_LOST) mobileWorldHopAt = 0;
+		if (state == GameState.HOPPING)
+		{
+			mobileHop.started(System.currentTimeMillis());
+		}
+		if (state == GameState.LOGIN_SCREEN)
+		{
+			mobileHop.reset();
+		}
 		if (state == GameState.LOGIN_SCREEN || state == GameState.HOPPING
 			|| state == GameState.CONNECTION_LOST || state == GameState.LOGGING_IN)
 		{
@@ -155,11 +164,7 @@ public class BotwPlugin extends Plugin
 			return;
 		}
 
-		if (mobileWorldHopAt > 0)
-		{
-			panel.noteHiscoresPublish(localPlayerName(), mobileWorldHopAt);
-			mobileWorldHopAt = 0;
-		}
+		publishMobileHopWhenReady();
 
 		// Both are stored per account, so they cannot be read until there is an account to read them
 		// for. Logging in on a second character has to swap them over, not merge them.
@@ -173,6 +178,20 @@ public class BotwPlugin extends Plugin
 
 		// A backlog from an earlier session goes out now rather than waiting for the next timer.
 		sender.flush();
+	}
+
+	@Subscribe
+	public void onGameTick(GameTick tick)
+	{
+		publishMobileHopWhenReady();
+	}
+
+	private void publishMobileHopWhenReady()
+	{
+		// LOGGED_IN can arrive before the local player is restored. Retry on game ticks instead
+		// of consuming the hop with a null name and blocking the mobile switch indefinitely.
+		mobileHop.publishIfReady(client.getGameState() == GameState.LOGGED_IN,
+			localPlayerName(), panel::noteHiscoresPublish);
 	}
 
 	/**

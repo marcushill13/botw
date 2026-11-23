@@ -789,6 +789,7 @@ public class BotwPanel extends PluginPanel
 
 	public void noteHiscoresPublish(String rsn, long hoppedAt)
 	{
+		if (rsn == null || rsn.trim().isEmpty()) return;
 		hiscoresPublishedRsn = rsn;
 		hiscoresPublishedAt = hoppedAt;
 	}
@@ -798,9 +799,15 @@ public class BotwPanel extends PluginPanel
 		long cutoff = hiscoresPublishedAt;
 		String rsn = playerName.get();
 		long age = System.currentTimeMillis() - cutoff;
-		if (rsn == null || !rsn.equalsIgnoreCase(hiscoresPublishedRsn) || age < 15000 || age > 300000)
+		if (rsn == null || !rsn.equalsIgnoreCase(hiscoresPublishedRsn) || cutoff <= 0 || age > 300000)
 		{
-			Cards.warn(this, "Hop worlds, wait 15 seconds, then press Switch to mobile tracking. This publishes your latest progress to Hiscores.");
+			Cards.warn(this, "Mobile mode is not active yet. No recent world hop was detected for this character. Hop to another world while this plugin is enabled, wait 15 seconds, then press Switch to mobile tracking again.");
+			return;
+		}
+		if (age < 15000)
+		{
+			Cards.warn(this, "World hop detected. Wait " + Math.max(1, (15000 - age + 999) / 1000)
+				+ " more seconds, then press Switch to mobile tracking again. Mobile mode is not active yet.");
 			return;
 		}
 		String token = challenges.participantTokenFor(code);

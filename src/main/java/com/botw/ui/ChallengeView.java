@@ -237,6 +237,12 @@ public class ChallengeView extends JPanel
 		body.add(Cards.sectionLabel("Scoring"));
 		body.add(pointsList(challenge));
 
+		prizeHolder.setLayout(new BoxLayout(prizeHolder, BoxLayout.Y_AXIS));
+		prizeHolder.setBackground(Theme.BACKGROUND);
+		prizeHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
+		renderPrizes();
+		body.add(prizeHolder);
+
 		body.add(Cards.gap(10));
 		if (challenge.getEventType() == ChallengeType.BOSS)
 		{
@@ -286,11 +292,6 @@ public class ChallengeView extends JPanel
 		renderLeaderboard();
 		body.add(leaderboardHolder);
 
-		prizeHolder.setLayout(new BoxLayout(prizeHolder, BoxLayout.Y_AXIS));
-		prizeHolder.setBackground(Theme.BACKGROUND);
-		prizeHolder.setAlignmentX(Component.LEFT_ALIGNMENT);
-		renderPrizes();
-		body.add(prizeHolder);
 
 		body.add(Cards.gap(10));
 		body.add(Cards.sectionLabel("Your " + challenge.scoreUnit()));
@@ -600,9 +601,9 @@ public class ChallengeView extends JPanel
 				|| challenge.getEventType() == ChallengeType.MINIGAME
 				|| (challenge.getEventType() == ChallengeType.RAID && challenge.isRaidByPoints()))
 				&& challenge.dropPoints(drop) > 0;
-			if (!scores && !drop.isFirstPrize() && !drop.isPurple()) continue;
+			if (!scores && !drop.isPurple()) continue;
 			list.add(Cards.gap(2));
-			String value = scores ? challenge.dropPoints(drop) + " pts" : drop.isFirstPrize() ? "First" : "Purple";
+			String value = scores ? challenge.dropPoints(drop) + " pts" : "Purple";
 			list.add(row(WeeklyRewards.spriteId(drop), drop.getName(), value, Theme.TEXT));
 		}
 
